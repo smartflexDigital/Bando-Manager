@@ -381,6 +381,8 @@ select option{background:var(--bg3)}
       <div id="reportPerLine"></div>
       <div class="section-title" style="margin-top:2rem">Hali ya Slots Leo</div>
       <div id="reportSlots"></div>
+      <div class="section-title" style="margin-top:2rem">📋 Rekodi za Mauzo — na Tarehe</div>
+      <div id="reportSalesList"></div>
     </section>
 
   </main>
@@ -643,14 +645,34 @@ function fmtDateTime(iso){
   return d.toLocaleDateString('sw-TZ',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('sw-TZ',{hour:'2-digit',minute:'2-digit'});
 }
 
-// ---- DAILY RESET ----
+// ---- DAILY RESET — inafanya kazi saa 00:00 usiku ----
 function resetSlotsIfNewDay(){
-  const last=_cache.lastDate,today=todayStr();
+  // Angalia kama siku imebadilika tangu mara ya mwisho
+  const last=_cache.lastDate, today=todayStr();
+  if(last && last!==today){
+    // Futa slots za siku ya jana pekee, siku nyingine zinabaki
+    const kept = getSlots().filter(s => s.date === today);
+    saveSlots(kept);
+  }
   if(last!==today){
-    saveSlots([]);
     _cache.lastDate=today;
     saveDocToFirestore('meta',{lastDate:today});
   }
+}
+
+function scheduleNextMidnightReset(){
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate()+1);
+  tomorrow.setHours(0,0,0,0); // saa 00:00:00 ya kesho
+  const msUntilMidnight = tomorrow - now;
+  console.log(`Slot reset imetengezwa kwa saa 00:00 — baada ya dakika ${Math.round(msUntilMidnight/60000)}`);
+  setTimeout(()=>{
+    resetSlotsIfNewDay();   // Fanya reset
+    renderAll();            // Sasisha UI — laini zote zinaonyesha slots mpya
+    showToast('🌙 Siku mpya — Slots zimewekwa upya!','success');
+    scheduleNextMidnightReset(); // Panga reset ya siku inayofuata
+  }, msUntilMidnight);
 }
 
 // ---- SLOTS ----
@@ -972,6 +994,28 @@ function renderReports(){
       </div>
     </div>`;
   }).join('');
+
+  // ---- Orodha ya mauzo yote na tarehe ----
+  const salesListEl=document.getElementById('reportSalesList');
+  if(salesListEl){
+    if(!sales.length){salesListEl.innerHTML='<div class="empty-state">Hakuna mauzo kwa kipindi hiki.</div>';return}
+    salesListEl.innerHTML=sales.slice().reverse().map(s=>{
+      const rev=s.sellingPrice??s.amount??0,cost=s.costPrice??0,profit=s.profit??(rev-cost);
+      const dateStr=fmtDateTime(s.date);
+      return`<div class="list-item">
+        <div class="list-item-left">
+          <div class="li-title">${s.lineName??'—'}${s.buyerPhone?' → '+s.buyerPhone:''}</div>
+          <div class="li-sub">📅 ${dateStr}${s.mb?' · '+s.mb:''}</div>
+          <div class="li-sub">Gharama: ${fmt(cost)} · Mapato: ${fmt(rev)}</div>
+        </div>
+        <div class="list-item-right">
+          <div class="li-amount">${fmt(rev)}</div>
+          <div style="font-size:.75rem;font-weight:600;color:${profit>=0?'var(--success)':'var(--danger)'}">${profit>=0?'+':''}${fmt(profit)}</div>
+          <span class="li-badge ${s.type}">${s.type==='week'?'Wiki':'Mwezi'}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
 }
 
 // ---- MODALS ----
@@ -1153,7 +1197,9 @@ function setTopbarDate(){
 
 // ---- INIT ----
 function initApp(){
-  resetSlotsIfNewDay();setTopbarDate();renderAll();calcBuildGbBtns();navigateTo('dashboard');
+  resetSlotsIfNewDay();
+  scheduleNextMidnightReset();
+  setTopbarDate();renderAll();calcBuildGbBtns();navigateTo('dashboard');
 }
 initLock();
 </script>
