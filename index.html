@@ -105,6 +105,24 @@ select option{background:var(--bg3)}
 .li-badge.add{background:rgba(34,197,94,.15);color:var(--success)}
 .empty-state{text-align:center;color:var(--text3);padding:2rem;font-size:.9rem}
 .report-filters{display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap}
+/* ---- DATE PICKER ---- */
+.date-picker-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem;padding:.85rem 1rem;background:var(--bg2);border:1px solid var(--border);border-radius:10px}
+.date-picker-row label{font-size:.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.date-picker-row input[type=date]{width:auto;padding:.4rem .7rem;font-size:.85rem;flex:1;min-width:130px}
+.date-picker-row .btn{white-space:nowrap}
+/* ---- CHARTS ---- */
+.chart-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem;margin-bottom:1rem;overflow:hidden}
+.chart-title{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:.85rem}
+.chart-canvas-wrap{position:relative;width:100%;overflow-x:auto}
+canvas{display:block;width:100%!important}
+.chart-legend{display:flex;gap:1rem;margin-top:.6rem;flex-wrap:wrap;font-size:.75rem;color:var(--text2)}
+.chart-legend span{display:flex;align-items:center;gap:.3rem}
+.leg-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+/* trend badge */
+.trend-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.78rem;font-weight:700;padding:.2rem .55rem;border-radius:6px}
+.trend-up{background:rgba(34,197,94,.15);color:var(--success)}
+.trend-down{background:rgba(239,68,68,.15);color:var(--danger)}
+.trend-flat{background:rgba(90,106,128,.15);color:var(--text2)}
 .filter-btn{padding:.4rem .9rem;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-family:var(--font);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .15s}
 .filter-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
 .report-line-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem 1.25rem;margin-bottom:.6rem}
@@ -203,6 +221,7 @@ select option{background:var(--bg3)}
     <button class="nav-btn" data-page="calc"><span class="nav-icon">🧮</span><span>Calculator</span></button>
     <button class="nav-btn" data-page="balance"><span class="nav-icon">💰</span><span>Ongeza Salio</span></button>
     <button class="nav-btn" data-page="reports"><span class="nav-icon">📊</span><span>Ripoti</span></button>
+    <button class="nav-btn" data-page="settings"><span class="nav-icon">⚙️</span><span>Mipangilio</span></button>
   </nav>
 
   <main class="content">
@@ -214,6 +233,7 @@ select option{background:var(--bg3)}
         <div class="stat-card accent"><div class="stat-label">Jumla ya Salio</div><div class="stat-value" id="statTotalBalance">TSh 0</div><div class="stat-note">Laini zote</div></div>
         <div class="stat-card"><div class="stat-label">Mapato Leo</div><div class="stat-value" id="statTodaySales">TSh 0</div><div class="stat-note" id="statTodayCount">0 mauzo</div></div>
         <div class="stat-card success"><div class="stat-label">Faida Leo</div><div class="stat-value" id="statTodayProfit">TSh 0</div><div class="stat-note" id="statTodayCost">Gharama: TSh 0</div></div>
+        <div class="stat-card success"><div class="stat-label">Faida Jumla (Zote)</div><div class="stat-value" id="statAllTimeProfit">TSh 0</div><div class="stat-note" id="statAllTimeReinvest">Mzunguko: TSh 0</div></div>
         <div class="stat-card"><div class="stat-label">Idadi ya Laini</div><div class="stat-value" id="statLineCount">0</div><div class="stat-note">Laini zilizosajiliwa</div></div>
         <div class="stat-card warning"><div class="stat-label">Laini Zimejaa</div><div class="stat-value" id="statFullLines">0</div><div class="stat-note">Slots zote zimekwisha</div></div>
       </div>
@@ -333,8 +353,19 @@ select option{background:var(--bg3)}
 
     <!-- BALANCE -->
     <section class="page" id="page-balance">
-      <div class="page-header"><h1>Ongeza Salio</h1><p class="page-sub">Weka fedha kwenye laini yako</p></div>
+      <div class="page-header"><h1>Ongeza Salio</h1><p class="page-sub">Rudisha faida kwenye mzunguko au ongeza hela mpya</p></div>
       <div class="form-card">
+        <div class="form-group">
+          <label>Chanzo cha Fedha</label>
+          <div class="type-toggle">
+            <button type="button" class="type-btn active" data-src="faida" onclick="selectBalanceSource('faida')">♻️ Faida ya Mzunguko</button>
+            <button type="button" class="type-btn" data-src="nje" onclick="selectBalanceSource('nje')">💵 Hela Mpya ya Nje</button>
+          </div>
+        </div>
+        <div class="slot-info-box" id="balanceSourceInfo" style="font-size:.85rem">
+          <div class="sib-row"><span class="sib-label">ℹ️ Maana yake</span></div>
+          <div style="color:var(--text2);margin-top:.3rem" id="balanceSourceDesc">Faida uliyopata kutoka mauzo inaingia tena kama salio la kununulia bando jipya — mzunguko unaendelea.</div>
+        </div>
         <div class="form-group">
           <label>Chagua Laini</label>
           <select id="balanceLine"><option value="">-- Chagua laini --</option></select>
@@ -353,36 +384,132 @@ select option{background:var(--bg3)}
         </div>
         <div class="form-group">
           <label>Maelezo (Hiari)</label>
-          <input type="text" id="balanceNote" placeholder="e.g. Malipo ya M-Pesa"/>
+          <input type="text" id="balanceNote" placeholder="e.g. Faida ya tarehe 28 Juni"/>
         </div>
-        <button class="btn btn-success btn-full" onclick="addBalance()">💰 Ongeza Salio</button>
+        <button class="btn btn-success btn-full" onclick="addBalance()">💰 Weka Salio</button>
       </div>
-      <div class="section-title" style="margin-top:2rem">Historia ya Miamala</div>
+
+      <div class="section-title" style="margin-top:2rem">📊 Muhtasari wa Mzunguko</div>
+      <div class="stat-grid" id="cycleStats">
+        <div class="stat-card success"><div class="stat-label">Faida Yote Jumla</div><div class="stat-value" id="cycTotalProfit">TSh 0</div><div class="stat-note">Tangu mwanzo</div></div>
+        <div class="stat-card accent"><div class="stat-label">Iliyorudishwa</div><div class="stat-value" id="cycReinvested">TSh 0</div><div class="stat-note">Faida → Mzunguko</div></div>
+        <div class="stat-card"><div class="stat-label">Hela Mpya ya Nje</div><div class="stat-value" id="cycExternal">TSh 0</div><div class="stat-note">Uliingiza kutoka nje</div></div>
+        <div class="stat-card warning"><div class="stat-label">Faida Inayobaki</div><div class="stat-value" id="cycRemaining">TSh 0</div><div class="stat-note">Haijawekwa mzunguko</div></div>
+      </div>
+
+      <div class="section-title" style="margin-top:1.5rem">Historia ya Salio — kwa Tarehe</div>
       <div id="transactionsList"></div>
     </section>
 
     <!-- REPORTS -->
     <section class="page" id="page-reports">
-      <div class="page-header"><h1>Ripoti</h1><p class="page-sub">Uchambuzi wa biashara yako</p></div>
+      <div class="page-header"><h1>Ripoti</h1><p class="page-sub">Uchambuzi wa faida na mwenendo wa biashara</p></div>
+
+      <!-- FILTERS -->
       <div class="report-filters">
-        <button class="filter-btn active" data-filter="today" onclick="setReportFilter('today')">Leo</button>
-        <button class="filter-btn" data-filter="week" onclick="setReportFilter('week')">Wiki Hii</button>
-        <button class="filter-btn" data-filter="month" onclick="setReportFilter('month')">Mwezi Huu</button>
-        <button class="filter-btn" data-filter="all" onclick="setReportFilter('all')">Zote</button>
+        <button class="filter-btn active" data-filter="today"  onclick="setReportFilter('today')">Leo</button>
+        <button class="filter-btn" data-filter="yesterday"     onclick="setReportFilter('yesterday')">Jana</button>
+        <button class="filter-btn" data-filter="week"          onclick="setReportFilter('week')">Wiki Hii</button>
+        <button class="filter-btn" data-filter="month"         onclick="setReportFilter('month')">Mwezi Huu</button>
+        <button class="filter-btn" data-filter="all"           onclick="setReportFilter('all')">Zote</button>
+        <button class="filter-btn" data-filter="custom"        onclick="setReportFilter('custom')">📅 Tarehe Maalum</button>
       </div>
+
+      <!-- DATE PICKER (custom mode) -->
+      <div class="date-picker-row" id="customDateRow" style="display:none">
+        <label>Kutoka</label>
+        <input type="date" id="dateFrom"/>
+        <label>Hadi</label>
+        <input type="date" id="dateTo"/>
+        <button class="btn btn-primary btn-sm" onclick="applyCustomDate()">Tafuta</button>
+        <span id="customDateResult" style="font-size:.8rem;color:var(--text2)"></span>
+      </div>
+
+      <!-- SUMMARY STATS -->
       <div class="stat-grid">
-        <div class="stat-card accent"><div class="stat-label">Mapato Jumla</div><div class="stat-value" id="rptTotalSales">TSh 0</div><div class="stat-note" id="rptSalesCount">0 rekodi</div></div>
-        <div class="stat-card"><div class="stat-label">Gharama Jumla</div><div class="stat-value" id="rptTotalCost">TSh 0</div><div class="stat-note">Bei ya kununua</div></div>
-        <div class="stat-card success"><div class="stat-label">Faida Jumla</div><div class="stat-value" id="rptTotalProfit">TSh 0</div><div class="stat-note" id="rptMargin">Margin: 0%</div></div>
+        <div class="stat-card accent"><div class="stat-label">Mapato</div><div class="stat-value" id="rptTotalSales">TSh 0</div><div class="stat-note" id="rptSalesCount">0 rekodi</div></div>
+        <div class="stat-card"><div class="stat-label">Gharama</div><div class="stat-value" id="rptTotalCost">TSh 0</div><div class="stat-note">Bei ya kununua</div></div>
+        <div class="stat-card success"><div class="stat-label">Faida</div><div class="stat-value" id="rptTotalProfit">TSh 0</div><div class="stat-note" id="rptMargin">Margin: 0%</div></div>
         <div class="stat-card"><div class="stat-label">Bando za Wiki</div><div class="stat-value" id="rptWeekSales">0</div><div class="stat-note" id="rptWeekAmount">Faida: TSh 0</div></div>
         <div class="stat-card"><div class="stat-label">Bando za Mwezi</div><div class="stat-value" id="rptMonthSales">0</div><div class="stat-note" id="rptMonthAmount">Faida: TSh 0</div></div>
       </div>
-      <div class="section-title">Mauzo kwa Kila Laini</div>
+
+      <!-- TREND INDICATOR -->
+      <div id="trendIndicator" style="margin-bottom:1rem;font-size:.88rem;color:var(--text2)"></div>
+
+      <!-- LINE CHART — mwenendo -->
+      <div class="chart-wrap" id="lineChartWrap" style="display:none">
+        <div class="chart-title">📈 Mwenendo wa Faida — Siku hadi Siku</div>
+        <div class="chart-canvas-wrap"><canvas id="lineChart" height="180"></canvas></div>
+        <div class="chart-legend">
+          <span><i class="leg-dot" style="background:var(--success)"></i>Faida ya Siku</span>
+          <span><i class="leg-dot" style="background:rgba(34,197,94,.2);border-radius:0;width:16px;height:10px"></i>Eneo</span>
+        </div>
+      </div>
+
+      <!-- BAR CHART — ulinganisho -->
+      <div class="chart-wrap" id="barChartWrap" style="display:none">
+        <div class="chart-title">📊 Ulinganisho wa Faida — kwa Siku</div>
+        <div class="chart-canvas-wrap"><canvas id="barChart" height="180"></canvas></div>
+      </div>
+
+      <!-- PER LINE -->
+      <div class="section-title" style="margin-top:1.5rem">Mauzo kwa Kila Laini</div>
       <div id="reportPerLine"></div>
-      <div class="section-title" style="margin-top:2rem">Hali ya Slots Leo</div>
+
+      <!-- SLOTS -->
+      <div class="section-title" style="margin-top:1.5rem">Hali ya Slots Leo</div>
       <div id="reportSlots"></div>
-      <div class="section-title" style="margin-top:2rem">📋 Rekodi za Mauzo — na Tarehe</div>
+
+      <!-- SALES LIST WITH DATES -->
+      <div class="section-title" style="margin-top:1.5rem">📋 Rekodi za Mauzo — na Tarehe</div>
       <div id="reportSalesList"></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="page" id="page-settings">
+      <div class="page-header"><h1>Mipangilio</h1><p class="page-sub">Badilisha PIN na mipangilio mingine ya mfumo</p></div>
+
+      <div class="form-card" style="max-width:420px">
+        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:1rem">🔒 Badilisha PIN</div>
+
+        <div class="form-group">
+          <label>PIN ya Sasa</label>
+          <div style="position:relative">
+            <input type="password" id="settingOldPin" placeholder="Ingiza PIN ya sasa" maxlength="8" inputmode="numeric" pattern="[0-9]*"/>
+            <button type="button" onclick="togglePinVis('settingOldPin',this)" style="position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);cursor:pointer;font-size:.9rem">👁</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>PIN Mpya (namba 4–8)</label>
+          <div style="position:relative">
+            <input type="password" id="settingNewPin" placeholder="Ingiza PIN mpya" maxlength="8" inputmode="numeric" pattern="[0-9]*" oninput="checkPinStrength()"/>
+            <button type="button" onclick="togglePinVis('settingNewPin',this)" style="position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);cursor:pointer;font-size:.9rem">👁</button>
+          </div>
+          <div id="pinStrengthBar" style="height:4px;border-radius:2px;background:var(--border);margin-top:.4rem;overflow:hidden"><div id="pinStrengthFill" style="height:100%;width:0;border-radius:2px;transition:all .3s"></div></div>
+          <div id="pinStrengthLabel" style="font-size:.75rem;color:var(--text2);margin-top:.25rem"></div>
+        </div>
+
+        <div class="form-group">
+          <label>Thibitisha PIN Mpya</label>
+          <input type="password" id="settingConfirmPin" placeholder="Rudia PIN mpya" maxlength="8" inputmode="numeric" pattern="[0-9]*"/>
+        </div>
+
+        <div id="changePinMsg" style="font-size:.83rem;margin-bottom:.75rem;display:none"></div>
+
+        <button class="btn btn-primary btn-full" onclick="changePin()">🔒 Hifadhi PIN Mpya</button>
+      </div>
+
+      <div class="form-card" style="max-width:420px;margin-top:1rem">
+        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:1rem">ℹ️ Taarifa za Mfumo</div>
+        <div class="slot-info-box">
+          <div class="sib-row"><span class="sib-label">Toleo</span><span class="sib-val">BandoManager v2.0</span></div>
+          <div class="sib-row"><span class="sib-label">Database</span><span class="sib-val" style="color:var(--success)">Firebase Firestore ☁️</span></div>
+          <div class="sib-row"><span class="sib-label">Business ID</span><span class="sib-val" style="font-size:.72rem;color:var(--text2)">hglobal-bando-469qjc3yw6br3pzf</span></div>
+          <div class="sib-row"><span class="sib-label">Urefu wa PIN</span><span class="sib-val" id="settingPinLen">6 namba</span></div>
+        </div>
+      </div>
     </section>
 
   </main>
@@ -428,12 +555,33 @@ select option{background:var(--bg3)}
 // ============================================================
 // PIN LOCK
 // ============================================================
-const PIN_HASH = 'zmv6wt'; // hashed PIN — not stored in plaintext
-const PIN_LENGTH = 6;
+let PIN_HASH = localStorage.getItem('bm_pin_hash') || 'zmv6wt'; // default: 262626
+const PIN_LENGTH_MIN = 4;
+const PIN_LENGTH_MAX = 8;
+let PIN_LENGTH = parseInt(localStorage.getItem('bm_pin_len')||'6');
 function hashPin(str){
   let hash=5381;
   for(let i=0;i<str.length;i++){hash=((hash<<5)+hash)+str.charCodeAt(i);hash=hash&0xFFFFFFFF}
   return (hash>>>0).toString(36);
+}
+function savePinLocally(hash, len){
+  // Hifadhi kwenye localStorage (haraka) na Firestore (usalama)
+  localStorage.setItem('bm_pin_hash', hash);
+  localStorage.setItem('bm_pin_len', String(len));
+  if(fbReady) saveDocToFirestore('pin',{hash, len});
+}
+async function loadPinFromFirestore(){
+  try{
+    const ref=fbDb.collection('bandoManager').doc(BUSINESS_ID).collection('data').doc('pin');
+    const snap=await ref.get();
+    if(snap.exists){
+      const d=snap.data();
+      PIN_HASH=d.hash||PIN_HASH;
+      PIN_LENGTH=d.len||PIN_LENGTH;
+      localStorage.setItem('bm_pin_hash',PIN_HASH);
+      localStorage.setItem('bm_pin_len',String(PIN_LENGTH));
+    }
+  }catch(e){console.log('PIN load fallback to localStorage')}
 }
 
 let pinEntry='';
@@ -514,6 +662,74 @@ function showLoadingOverlay(show){
   } else if(ov){
     ov.remove();
   }
+}
+
+// ---- SETTINGS — BADILISHA PIN ----
+function togglePinVis(inputId, btn){
+  const inp=document.getElementById(inputId);
+  if(inp.type==='password'){inp.type='text';btn.textContent='🙈'}
+  else{inp.type='password';btn.textContent='👁'}
+}
+
+function checkPinStrength(){
+  const pin=document.getElementById('settingNewPin').value;
+  const bar=document.getElementById('pinStrengthFill');
+  const lbl=document.getElementById('pinStrengthLabel');
+  if(!pin){bar.style.width='0';lbl.textContent='';return}
+  let score=0;
+  if(pin.length>=4) score++;
+  if(pin.length>=6) score++;
+  if(pin.length>=8) score++;
+  if(!/^(.)\1+$/.test(pin)) score++; // si namba moja kurudiwa
+  const map=[
+    {w:'25%',c:'var(--danger)',t:'Dhaifu sana'},
+    {w:'50%',c:'var(--warning)',t:'Dhaifu'},
+    {w:'75%',c:'var(--accent2)',t:'Wastani'},
+    {w:'100%',c:'var(--success)',t:'Nzuri ✓'},
+  ];
+  const m=map[Math.min(score,3)];
+  bar.style.width=m.w; bar.style.background=m.c;
+  lbl.textContent=`Nguvu: ${m.t}`;
+  lbl.style.color=m.c;
+}
+
+function showPinMsg(msg, ok){
+  const el=document.getElementById('changePinMsg');
+  el.style.display='block';
+  el.style.color=ok?'var(--success)':'var(--danger)';
+  el.textContent=msg;
+  if(ok) setTimeout(()=>el.style.display='none', 3000);
+}
+
+function changePin(){
+  const oldPin  = document.getElementById('settingOldPin').value.trim();
+  const newPin  = document.getElementById('settingNewPin').value.trim();
+  const confirm = document.getElementById('settingConfirmPin').value.trim();
+
+  // Validations
+  if(!oldPin) return showPinMsg('Ingiza PIN ya sasa','error');
+  if(hashPin(oldPin) !== PIN_HASH) return showPinMsg('❌ PIN ya sasa si sahihi','error');
+  if(!newPin) return showPinMsg('Ingiza PIN mpya','error');
+  if(!/^\d+$/.test(newPin)) return showPinMsg('PIN lazima iwe namba tu (0–9)','error');
+  if(newPin.length < 4) return showPinMsg('PIN lazima iwe na namba 4 au zaidi','error');
+  if(newPin.length > 8) return showPinMsg('PIN haiwezi kuzidi namba 8','error');
+  if(newPin !== confirm) return showPinMsg('❌ PIN mpya hazilingani','error');
+  if(newPin === oldPin) return showPinMsg('PIN mpya lazima itofautiane na ya sasa','error');
+
+  // Save
+  const newHash = hashPin(newPin);
+  PIN_HASH = newHash;
+  PIN_LENGTH = newPin.length;
+  savePinLocally(newHash, newPin.length);
+
+  // Clear fields
+  ['settingOldPin','settingNewPin','settingConfirmPin'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pinStrengthFill').style.width='0';
+  document.getElementById('pinStrengthLabel').textContent='';
+  document.getElementById('settingPinLen').textContent=PIN_LENGTH+' namba';
+
+  showPinMsg('✅ PIN imebadilishwa na kuhifadhiwa!', true);
+  showToast('✅ PIN mpya imewekwa — namba '+PIN_LENGTH, 'success');
 }
 
 function lockNow(){
@@ -616,6 +832,7 @@ async function initFirebase(){
     _cache.lines=lines; _cache.sales=sales; _cache.transactions=transactions;
     _cache.slots=slots; _cache.calcRecords=calcRecords; _cache.lastDate=lastDate;
     fbReady=true;
+    await loadPinFromFirestore();
     setSyncStatus('synced');
   }catch(e){
     console.error('Firebase init failed',e);
@@ -728,20 +945,39 @@ function deleteLine(lineId){
   openModal('modalConfirm');
 }
 
+let currentBalanceSource = 'faida'; // 'faida' | 'nje'
+
+function selectBalanceSource(src){
+  currentBalanceSource = src;
+  document.querySelectorAll('[data-src]').forEach(b=>b.classList.toggle('active', b.dataset.src===src));
+  const desc = document.getElementById('balanceSourceDesc');
+  if(src==='faida'){
+    desc.textContent = 'Faida uliyopata kutoka mauzo inaingia tena kama salio la kununulia bando jipya — mzunguko unaendelea.';
+  } else {
+    desc.textContent = 'Hela mpya inayoingia kutoka nje ya mzunguko — e.g. mtaji wa ziada, mkopo, au fedha nyingine.';
+  }
+}
+
 function addBalance(){
   const lineId=document.getElementById('balanceLine').value;
   const amount=parseFloat(document.getElementById('balanceAmount').value);
   const note=document.getElementById('balanceNote').value.trim();
+  const source=currentBalanceSource;
   if(!lineId)return showToast('Chagua laini kwanza','error');
   if(!amount||amount<=0)return showToast('Ingiza kiasi sahihi','error');
   const lines=getLines(),idx=lines.findIndex(l=>l.id===lineId);if(idx<0)return;
   lines[idx].balance=(lines[idx].balance||0)+amount;saveLines(lines);
   const txns=getTransactions();
-  txns.push({id:uid(),lineId,type:'add',amount,note:note||'Kuongeza salio',date:new Date().toISOString()});
+  const sourceLabel = source==='faida' ? '♻️ Faida ya Mzunguko' : '💵 Hela Mpya ya Nje';
+  txns.push({
+    id:uid(), lineId, type:'add', amount, source,
+    note: note || sourceLabel,
+    date: new Date().toISOString()
+  });
   saveTransactions(txns);
   document.getElementById('balanceAmount').value='';
   document.getElementById('balanceNote').value='';
-  showToast(`${fmt(amount)} imeongezwa kwa ${lines[idx].name} ✓`,'success');
+  showToast(`${fmt(amount)} imeongezwa — ${sourceLabel} ✓`,'success');
   renderAll();updateBalancePage();updateBalancePreview();
 }
 
@@ -876,6 +1112,7 @@ function renderDashboard(){
   document.getElementById('statFullLines').textContent=fullLines.length;
   const grid=document.getElementById('dashboardLines');
   grid.innerHTML=lines.length?lines.map(l=>buildLineCard(l,false)).join(''):'<div class="empty-state">Bado haujasajili laini. Nenda kwenye "Laini" kuanza.</div>';
+  renderCycleStats();
 }
 
 // ---- LINES PAGE ----
@@ -915,36 +1152,273 @@ function previewNewBalance(){
   document.getElementById('newBalanceVal').textContent=fmt((line.balance||0)+amount);
   newPrev.style.display='flex';
 }
+function renderCycleStats(){
+  const allSales = getSales();
+  const allTxns  = getTransactions();
+  const totalProfit   = allSales.reduce((s,x)=>s+(x.profit??((x.sellingPrice??x.amount??0)-(x.costPrice??0))),0);
+  const reinvested    = allTxns.filter(t=>t.source==='faida').reduce((s,t)=>s+t.amount,0);
+  const external      = allTxns.filter(t=>t.source==='nje'||!t.source).reduce((s,t)=>s+t.amount,0);
+  const remaining     = Math.max(0, totalProfit - reinvested);
+  // Dashboard
+  const ap=document.getElementById('statAllTimeProfit');
+  const ar=document.getElementById('statAllTimeReinvest');
+  if(ap) ap.textContent=fmt(totalProfit);
+  if(ar) ar.textContent='Mzunguko: '+fmt(reinvested);
+  // Balance page cycle stats
+  const cp=document.getElementById('cycTotalProfit');
+  const cr=document.getElementById('cycReinvested');
+  const ce=document.getElementById('cycExternal');
+  const crem=document.getElementById('cycRemaining');
+  if(cp)  cp.textContent=fmt(totalProfit);
+  if(cr)  cr.textContent=fmt(reinvested);
+  if(ce)  ce.textContent=fmt(external);
+  if(crem)crem.textContent=fmt(remaining);
+}
+
 function renderTransactions(){
   const el=document.getElementById('transactionsList');if(!el)return;
-  const txns=getTransactions().slice().reverse().slice(0,30);
-  if(!txns.length){el.innerHTML='<div class="empty-state">Bado hakuna miamala.</div>';return}
+  renderCycleStats();
+  const txns=getTransactions().slice().reverse();
+  if(!txns.length){el.innerHTML='<div class="empty-state">Bado hakuna rekodi za salio.</div>';return}
   const lines=getLines();
-  el.innerHTML=txns.map(t=>{
-    const line=lines.find(l=>l.id===t.lineId);
-    return`<div class="list-item">
-      <div class="list-item-left">
-        <div class="li-title">${line?line.name:'Laini iliyofutwa'}</div>
-        <div class="li-sub">${t.note||''} · ${fmtDateTime(t.date)}</div>
+  // Group by date
+  const groups={};
+  txns.forEach(t=>{
+    const day=t.date.slice(0,10);
+    if(!groups[day]) groups[day]=[];
+    groups[day].push(t);
+  });
+  el.innerHTML=Object.entries(groups).map(([day,items])=>{
+    const dayTotal=items.reduce((s,t)=>s+t.amount,0);
+    const dayFaida=items.filter(t=>t.source==='faida').reduce((s,t)=>s+t.amount,0);
+    const dayNje=items.filter(t=>t.source==='nje'||!t.source).reduce((s,t)=>s+t.amount,0);
+    const dayLabel=new Date(day+'T12:00:00').toLocaleDateString('sw-TZ',{weekday:'short',day:'2-digit',month:'long',year:'numeric'});
+    const rows=items.map(t=>{
+      const line=lines.find(l=>l.id===t.lineId);
+      const isFaida=t.source==='faida';
+      const srcBadge=isFaida
+        ? `<span class="li-badge" style="background:rgba(0,196,167,.15);color:var(--accent)">♻️ Mzunguko</span>`
+        : `<span class="li-badge" style="background:rgba(0,151,255,.15);color:var(--accent2)">💵 Hela Mpya</span>`;
+      return`<div class="list-item" style="margin-bottom:.35rem">
+        <div class="list-item-left">
+          <div class="li-title">${line?line.name:'Laini iliyofutwa'} <small style="color:var(--text2);font-weight:400">${line?line.phone:''}</small></div>
+          <div class="li-sub">${t.note||''} · ${fmtDateTime(t.date)}</div>
+          <div style="margin-top:.2rem">${srcBadge}</div>
+        </div>
+        <div class="list-item-right">
+          <div class="li-amount">${fmt(t.amount)}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return`<div style="margin-bottom:1.25rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem .6rem;background:var(--bg3);border-radius:7px;margin-bottom:.5rem;font-size:.8rem">
+        <span style="font-weight:700;color:var(--text)">📅 ${dayLabel}</span>
+        <span style="color:var(--text2)">Jumla: <strong style="color:var(--accent)">${fmt(dayTotal)}</strong>${dayFaida>0?' · ♻️ '+fmt(dayFaida):''}${dayNje>0?' · 💵 '+fmt(dayNje):''}</span>
       </div>
-      <div class="list-item-right"><div class="li-amount">${fmt(t.amount)}</div><span class="li-badge add">Kuongeza</span></div>
+      ${rows}
     </div>`;
   }).join('');
 }
 
 // ---- REPORTS ----
+let customDateFrom=null, customDateTo=null;
+
 function setReportFilter(f){
   currentReportFilter=f;
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.toggle('active',b.dataset.filter===f));
+  const row=document.getElementById('customDateRow');
+  if(f==='custom'){
+    row.style.display='flex';
+    // Default: leo
+    const t=todayStr();
+    if(!document.getElementById('dateFrom').value) document.getElementById('dateFrom').value=t;
+    if(!document.getElementById('dateTo').value)   document.getElementById('dateTo').value=t;
+  } else {
+    row.style.display='none';
+  }
   renderReports();
 }
+
+function applyCustomDate(){
+  customDateFrom=document.getElementById('dateFrom').value;
+  customDateTo=document.getElementById('dateTo').value;
+  if(!customDateFrom||!customDateTo) return showToast('Chagua tarehe zote mbili','error');
+  if(customDateFrom>customDateTo) return showToast('Tarehe ya mwanzo lazima iwe kabla ya ya mwisho','error');
+  const res=document.getElementById('customDateResult');
+  res.textContent=`Inaonyesha: ${customDateFrom} → ${customDateTo}`;
+  renderReports();
+}
+
 function getFilteredSales(){
   const all=getSales(),today=todayStr(),now=new Date();
-  if(currentReportFilter==='today')return all.filter(s=>s.date.slice(0,10)===today);
+  if(currentReportFilter==='today')     return all.filter(s=>s.date.slice(0,10)===today);
+  if(currentReportFilter==='yesterday'){
+    const y=new Date(now);y.setDate(y.getDate()-1);
+    const ys=y.toISOString().slice(0,10);
+    return all.filter(s=>s.date.slice(0,10)===ys);
+  }
   if(currentReportFilter==='week'){const d=new Date(now);d.setDate(d.getDate()-6);return all.filter(s=>new Date(s.date)>=d)}
   if(currentReportFilter==='month'){const d=new Date(now);d.setDate(d.getDate()-29);return all.filter(s=>new Date(s.date)>=d)}
+  if(currentReportFilter==='custom'&&customDateFrom&&customDateTo){
+    return all.filter(s=>{const d=s.date.slice(0,10);return d>=customDateFrom&&d<=customDateTo})
+  }
   return all;
 }
+// ============================================================
+// CHARTS — Canvas-based, no external library needed
+// ============================================================
+function getProfitByDay(sales){
+  const map={};
+  sales.forEach(s=>{
+    const day=s.date.slice(0,10);
+    const p=s.profit??((s.sellingPrice??s.amount??0)-(s.costPrice??0));
+    map[day]=(map[day]||0)+p;
+  });
+  return map;
+}
+
+function drawLineChart(canvasId, dayMap){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas)return;
+  const days=Object.keys(dayMap).sort();
+  if(days.length<2){canvas.style.display='none';return}
+  canvas.style.display='block';
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.parentElement.clientWidth||320;
+  const H=180;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const pad={t:16,r:16,b:36,l:68};
+  const w=W-pad.l-pad.r, h=H-pad.t-pad.b;
+  const vals=days.map(d=>dayMap[d]);
+  const maxV=Math.max(...vals,1), minV=Math.min(...vals,0);
+  const range=maxV-minV||1;
+  const xStep=days.length>1?w/(days.length-1):w;
+
+  function xPos(i){return pad.l+(i/(days.length-1||1))*w}
+  function yPos(v){return pad.t+h-(((v-minV)/range)*h)}
+
+  // Grid lines
+  ctx.strokeStyle='rgba(42,58,80,.7)'; ctx.lineWidth=1;
+  const gridCount=4;
+  for(let i=0;i<=gridCount;i++){
+    const y=pad.t+(i/gridCount)*h;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+w,y);ctx.stroke();
+    const val=maxV-((i/gridCount)*range);
+    ctx.fillStyle='rgba(138,154,181,.8)';ctx.font='10px sans-serif';ctx.textAlign='right';
+    ctx.fillText(val>=1000?(val/1000).toFixed(1)+'k':Math.round(val),pad.l-6,y+3.5);
+  }
+
+  // Area fill
+  ctx.beginPath();
+  ctx.moveTo(xPos(0),yPos(vals[0]));
+  days.forEach((_,i)=>{if(i>0)ctx.lineTo(xPos(i),yPos(vals[i]))});
+  ctx.lineTo(xPos(days.length-1),pad.t+h);
+  ctx.lineTo(xPos(0),pad.t+h);
+  ctx.closePath();
+  const grad=ctx.createLinearGradient(0,pad.t,0,pad.t+h);
+  grad.addColorStop(0,'rgba(34,197,94,.22)');grad.addColorStop(1,'rgba(34,197,94,.02)');
+  ctx.fillStyle=grad;ctx.fill();
+
+  // Line
+  ctx.beginPath();ctx.strokeStyle='#22c55e';ctx.lineWidth=2.5;ctx.lineJoin='round';
+  days.forEach((_,i)=>{i===0?ctx.moveTo(xPos(i),yPos(vals[i])):ctx.lineTo(xPos(i),yPos(vals[i]))});
+  ctx.stroke();
+
+  // Dots + labels
+  days.forEach((d,i)=>{
+    const x=xPos(i),y=yPos(vals[i]);
+    ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);
+    ctx.fillStyle=vals[i]>=0?'#22c55e':'#ef4444';ctx.fill();
+    ctx.strokeStyle='var(--bg2)';ctx.lineWidth=1.5;ctx.stroke();
+    // X-axis date label
+    const lbl=new Date(d+'T12:00:00').toLocaleDateString('sw-TZ',{day:'2-digit',month:'short'});
+    ctx.fillStyle='rgba(138,154,181,.9)';ctx.font='9px sans-serif';ctx.textAlign='center';
+    if(days.length<=14||i%Math.ceil(days.length/7)===0) ctx.fillText(lbl,x,H-8);
+  });
+}
+
+function drawBarChart(canvasId, dayMap){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas)return;
+  const days=Object.keys(dayMap).sort();
+  if(!days.length){canvas.style.display='none';return}
+  canvas.style.display='block';
+  const dpr=window.devicePixelRatio||1;
+  const W=Math.max(canvas.parentElement.clientWidth||320, days.length*44);
+  const H=180;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  canvas.parentElement.style.overflowX=days.length>10?'auto':'hidden';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const pad={t:16,r:16,b:36,l:68};
+  const w=W-pad.l-pad.r, h=H-pad.t-pad.b;
+  const vals=days.map(d=>dayMap[d]);
+  const maxV=Math.max(...vals.map(Math.abs),1);
+  const barW=Math.max(Math.min(w/days.length-6,32),8);
+
+  function xPos(i){return pad.l+(i/(days.length||1))*w+(w/(days.length||1))/2}
+  function yZero(){return pad.t+h}
+
+  // Grid
+  ctx.strokeStyle='rgba(42,58,80,.7)';ctx.lineWidth=1;
+  [0,.25,.5,.75,1].forEach(t=>{
+    const y=pad.t+h*(1-t);
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+w,y);ctx.stroke();
+    const v=maxV*t;
+    ctx.fillStyle='rgba(138,154,181,.8)';ctx.font='10px sans-serif';ctx.textAlign='right';
+    ctx.fillText(v>=1000?(v/1000).toFixed(1)+'k':Math.round(v),pad.l-6,y+3.5);
+  });
+
+  // Bars
+  days.forEach((d,i)=>{
+    const v=vals[i];
+    const x=xPos(i)-barW/2;
+    const barH=Math.abs(v/maxV)*h;
+    const y=v>=0?yZero()-barH:yZero();
+    const isMax=v===Math.max(...vals), isMin=v===Math.min(...vals);
+    const col=v>=0
+      ? (isMax?'#22c55e':'rgba(34,197,94,.65)')
+      : (isMin?'#ef4444':'rgba(239,68,68,.65)');
+    ctx.fillStyle=col;
+    ctx.beginPath();
+    const r=3;
+    ctx.roundRect?ctx.roundRect(x,y,barW,barH||2,r):ctx.rect(x,y,barW,barH||2);
+    ctx.fill();
+    // Label on bar
+    if(barH>18){
+      ctx.fillStyle='#fff';ctx.font='bold 8px sans-serif';ctx.textAlign='center';
+      const lv=Math.abs(v)>=1000?(Math.abs(v)/1000).toFixed(1)+'k':Math.round(Math.abs(v));
+      ctx.fillText(lv,x+barW/2,v>=0?y+barH-5:y+10);
+    }
+    // Date label
+    const lbl=new Date(d+'T12:00:00').toLocaleDateString('sw-TZ',{day:'2-digit',month:'short'});
+    ctx.fillStyle='rgba(138,154,181,.9)';ctx.font='9px sans-serif';ctx.textAlign='center';
+    if(days.length<=14||i%Math.ceil(days.length/7)===0) ctx.fillText(lbl,xPos(i),H-8);
+  });
+}
+
+function renderTrendIndicator(dayMap){
+  const el=document.getElementById('trendIndicator');
+  if(!el)return;
+  const days=Object.keys(dayMap).sort();
+  if(days.length<2){el.innerHTML='';return}
+  const last=dayMap[days[days.length-1]];
+  const prev=dayMap[days[days.length-2]];
+  const diff=last-prev;
+  const pct=prev!==0?((diff/Math.abs(prev))*100).toFixed(1):null;
+  const arrow=diff>0?'↑':diff<0?'↓':'→';
+  const cls=diff>0?'trend-up':diff<0?'trend-down':'trend-flat';
+  const txt=diff>0?`Imepanda ${pct?pct+'%':''} ukilinganisha siku iliyotangulia`:
+            diff<0?`Imeshuka ${pct?Math.abs(pct)+'%':''} ukilinganisha siku iliyotangulia`:
+            'Faida ni sawa na siku iliyotangulia';
+  el.innerHTML=`<span class="trend-badge ${cls}">${arrow} ${txt} (${fmt(Math.abs(diff))})</span>`;
+}
+
+
 function renderReports(){
   const sales=getFilteredSales(),lines=getLines();
   const totalRev=sales.reduce((s,x)=>s+(x.sellingPrice??x.amount??0),0);
@@ -963,6 +1437,15 @@ function renderReports(){
   document.getElementById('rptWeekAmount').textContent='Faida: '+fmt(wProfit);
   document.getElementById('rptMonthSales').textContent=monS.length;
   document.getElementById('rptMonthAmount').textContent='Faida: '+fmt(mProfit);
+
+  // ---- CHARTS ----
+  const dayMap=getProfitByDay(sales);
+  const dayCount=Object.keys(dayMap).length;
+  document.getElementById('lineChartWrap').style.display=dayCount>=2?'block':'none';
+  document.getElementById('barChartWrap').style.display=dayCount>=1?'block':'none';
+  if(dayCount>=2) setTimeout(()=>drawLineChart('lineChart',dayMap),50);
+  if(dayCount>=1) setTimeout(()=>drawBarChart('barChart',dayMap),50);
+  renderTrendIndicator(dayMap);
   const perLineEl=document.getElementById('reportPerLine');
   perLineEl.innerHTML=!lines.length?'<div class="empty-state">Hakuna laini.</div>':lines.map(l=>{
     const ls=sales.filter(s=>s.lineId===l.id);
@@ -1183,6 +1666,7 @@ function navigateTo(page){
   if(page==='calc'){calcCompute();renderCalcRecords()}
   if(page==='balance'){updateBalancePage();updateBalancePreview()}
   if(page==='reports')renderReports();
+  if(page==='settings'){document.getElementById('settingPinLen').textContent=PIN_LENGTH+' namba';}
 }
 document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>navigateTo(btn.dataset.page)));
 document.getElementById('balanceLine').addEventListener('change',updateBalancePreview);
