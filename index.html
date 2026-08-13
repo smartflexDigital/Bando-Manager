@@ -301,9 +301,13 @@ canvas{display:block;width:100%!important}
             <input type="text" id="sellMb" placeholder="e.g. 1000MB au 1GB"/>
           </div>
           <div class="form-group">
-            <label>Nambari ya Mnunuzi (Hiari)</label>
+            <label>Nambari ya Mnunuzi — SMS itatumwa kiotomatiki</label>
             <input type="text" id="sellBuyerPhone" placeholder="e.g. 0712345678"/>
           </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;font-size:.85rem">
+          <input type="checkbox" id="smsToggle" checked style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer"/>
+          <label for="smsToggle" style="cursor:pointer;color:var(--text2);text-transform:none;letter-spacing:0;font-size:.85rem;font-weight:400">📱 Tuma SMS kwa mnunuzi baada ya kurekodi uuzaji</label>
         </div>
         <button class="btn btn-primary btn-full" onclick="sellBundle()">💸 Rekodi Uuzaji</button>
       </div>
@@ -1107,6 +1111,56 @@ function updateSellSlotInfo(){
     <div class="sib-row"><span class="sib-label">Slots za Mwezi zilizobaki</span><span class="sib-val ${mLeft===0?'full':'ok'}">${mLeft}/${MAX_MONTH}</span></div>`;
 }
 
+// ============================================================
+// NEXTSMS — SMS INTEGRATION
+// ============================================================
+const NEXTSMS_USER = 'hanshannu9.61d';
+const NEXTSMS_PASS = '3bac7e0630223f94c5f7f6716d691da5';
+const NEXTSMS_SENDER = 'WIFI';
+const NEXTSMS_URL = 'https://messaging-service.co.tz/api/sms/v1/text/single';
+
+function buildSmsMessage(gb, amount){
+  return `Hongera! Bando lako la ${gb} limewekwa kwenye namba yako. Furahia internet bila wasiwasi! Asante kwa kuchagua SMART BUNDLES.`;
+}
+
+async function sendNextSMS(phone, message){
+  // Standardize phone — ensure starts with 255
+  let recipient = phone.replace(/\s+/g,'');
+  if(recipient.startsWith('0')) recipient = '255' + recipient.slice(1);
+  if(recipient.startsWith('+')) recipient = recipient.slice(1);
+
+  const credentials = btoa(`${NEXTSMS_USER}:${NEXTSMS_PASS}`);
+  try {
+    const res = await fetch(NEXTSMS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Basic ${credentials}`
+      },
+      body: JSON.stringify({
+        from: NEXTSMS_SENDER,
+        to: recipient,
+        text: message
+      })
+    });
+    const data = await res.json();
+    // NextSMS returns groupId on success
+    if(res.ok && (data.groupId || data.messages)){
+      showToast(`📱 SMS imetumwa kwa ${phone} ✓`, 'success');
+      return true;
+    } else {
+      console.error('NextSMS error:', data);
+      showToast(`⚠️ SMS haikutumwa: ${data.description||data.message||'Jaribu tena'}`, 'warning');
+      return false;
+    }
+  } catch(e){
+    console.error('SMS fetch error:', e);
+    showToast('⚠️ SMS haikutumwa — angalia mtandao', 'warning');
+    return false;
+  }
+}
+
 function sellBundle(){
   const lineId=document.getElementById('sellLine').value;
   const cost=parseFloat(document.getElementById('sellCost').value);
@@ -1125,6 +1179,7 @@ function sellBundle(){
   if(line.balance<cost)return showToast(`❌ Salio halitatoshi! Lipo: ${fmt(line.balance)}`,'error');
   lines[idx].balance-=cost;saveLines(lines);
   const profit=amount-cost;
+  const gbLabel = mb || (type==='week'?'Wiki':'Mwezi');
   const sales=getSales();
   sales.push({id:uid(),lineId,lineName:line.name,linePhone:line.phone,type,costPrice:cost,sellingPrice:amount,profit,mb:mb||null,buyerPhone:buyer||null,date:new Date().toISOString()});
   saveSales(sales);
@@ -1134,7 +1189,13 @@ function sellBundle(){
   document.getElementById('sellMb').value='';
   document.getElementById('sellBuyerPhone').value='';
   document.getElementById('profitPreview').style.display='none';
-  showToast(`✓ Bando ya ${type==='week'?'Wiki':'Mwezi'} — Faida: ${fmt(profit)}`,'success');
+  showToast(`✓ Bando imerekodiwa — Faida: ${fmt(profit)}`,'success');
+  // Tuma SMS kama nambari ya mnunuzi imewekwa na toggle imewashwa
+  const smsOn = document.getElementById('smsToggle')?.checked !== false;
+  if(buyer && smsOn){
+    const smsMsg = buildSmsMessage(gbLabel, amount);
+    sendNextSMS(buyer, smsMsg);
+  }
   renderAll();updateSellSlotInfo();renderTodaySales();
 }
 
