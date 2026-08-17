@@ -1114,10 +1114,7 @@ function updateSellSlotInfo(){
 // ============================================================
 // NEXTSMS — SMS INTEGRATION
 // ============================================================
-const NEXTSMS_USER = 'hanshannu9.61d';
-const NEXTSMS_PASS = '3bac7e0630223f94c5f7f6716d691da5';
-const NEXTSMS_SENDER = 'WIFI';
-const NEXTSMS_URL = 'https://messaging-service.co.tz/api/sms/v1/text/single';
+const NEXTSMS_WORKER_URL = 'https://nextsms-proxy.hanshannu9.workers.dev';
 
 function buildSmsMessage(gb, amount){
   return `Hongera! Bando lako la ${gb} limewekwa kwenye namba yako. Furahia internet bila wasiwasi! Asante kwa kuchagua SMART BUNDLES.`;
@@ -1129,29 +1126,19 @@ async function sendNextSMS(phone, message){
   if(recipient.startsWith('0')) recipient = '255' + recipient.slice(1);
   if(recipient.startsWith('+')) recipient = recipient.slice(1);
 
-  const credentials = btoa(`${NEXTSMS_USER}:${NEXTSMS_PASS}`);
   try {
-    const res = await fetch(NEXTSMS_URL, {
+    const res = await fetch(NEXTSMS_WORKER_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Basic ${credentials}`
-      },
-      body: JSON.stringify({
-        from: NEXTSMS_SENDER,
-        to: recipient,
-        text: message
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: recipient, text: message })
     });
     const data = await res.json();
-    // NextSMS returns groupId on success
-    if(res.ok && (data.groupId || data.messages)){
+    if(res.ok && !data.error){
       showToast(`📱 SMS imetumwa kwa ${phone} ✓`, 'success');
       return true;
     } else {
       console.error('NextSMS error:', data);
-      showToast(`⚠️ SMS haikutumwa: ${data.description||data.message||'Jaribu tena'}`, 'warning');
+      showToast(`⚠️ SMS haikutumwa: ${data.description||data.error||'Jaribu tena'}`, 'warning');
       return false;
     }
   } catch(e){
