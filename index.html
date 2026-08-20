@@ -136,6 +136,10 @@ canvas{display:block;width:100%!important}
 .loan-meta{font-size:.78rem;color:var(--text2);margin-bottom:.65rem}
 .loan-actions{display:flex;gap:.5rem;flex-wrap:wrap}
 .overdue-tag{display:inline-block;font-size:.65rem;font-weight:700;text-transform:uppercase;padding:.15rem .45rem;border-radius:4px;background:rgba(239,68,68,.15);color:var(--danger);margin-left:.4rem}
+/* ---- REMINDER ---- */
+.toggle-switch.on{background:var(--accent)!important}
+.reminder-day-btn{padding:.35rem .8rem;border-radius:6px;border:1.5px solid var(--border);background:var(--bg3);color:var(--text2);font-family:var(--font);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .15s}
+.reminder-day-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,196,167,.08)}
 .filter-btn{padding:.4rem .9rem;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-family:var(--font);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .15s}
 .filter-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
 .report-line-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem 1.25rem;margin-bottom:.6rem}
@@ -540,6 +544,26 @@ canvas{display:block;width:100%!important}
         <div class="form-group">
           <label>Maelezo (Hiari)</label>
           <input type="text" id="loanNote" placeholder="e.g. Rafiki wa karibu, atalipa wiki"/>
+        </div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:1rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+            <label style="text-transform:none;font-size:.88rem;font-weight:600;color:var(--text);letter-spacing:0;margin:0">📱 Mkumbushe kwa SMS akichelewa</label>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <span style="font-size:.78rem;color:var(--text2)" id="reminderToggleLabel">Imezimwa</span>
+              <div class="toggle-switch" id="reminderToggle" onclick="toggleReminder()" style="width:40px;height:22px;background:var(--border);border-radius:11px;cursor:pointer;position:relative;transition:background .2s">
+                <div id="reminderKnob" style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left .2s"></div>
+              </div>
+            </div>
+          </div>
+          <div id="reminderDaysRow" style="display:none">
+            <label style="font-size:.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem;display:block">Mkumbushe baada ya siku ngapi bila kulipa</label>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+              <button type="button" class="reminder-day-btn active" data-days="1" onclick="selectReminderDays(1)">Siku 1</button>
+              <button type="button" class="reminder-day-btn" data-days="2" onclick="selectReminderDays(2)">Siku 2</button>
+              <button type="button" class="reminder-day-btn" data-days="3" onclick="selectReminderDays(3)">Siku 3</button>
+              <button type="button" class="reminder-day-btn" data-days="7" onclick="selectReminderDays(7)">Siku 7</button>
+            </div>
+          </div>
         </div>
         <button class="btn btn-primary btn-full" onclick="addLoan()">🤝 Hifadhi Mkopo</button>
       </div>
@@ -1809,6 +1833,38 @@ function loanPriceForGB(type, gb){
   return 0;
 }
 
+// ---- REMINDER TOGGLE ----
+let reminderEnabled = false;
+let reminderDays = 1;
+
+function toggleReminder(){
+  reminderEnabled = !reminderEnabled;
+  const toggle = document.getElementById('reminderToggle');
+  const knob   = document.getElementById('reminderKnob');
+  const label  = document.getElementById('reminderToggleLabel');
+  const row    = document.getElementById('reminderDaysRow');
+  if(reminderEnabled){
+    toggle.classList.add('on');
+    knob.style.left = '21px';
+    label.textContent = 'Imewashwa';
+    label.style.color = 'var(--accent)';
+    row.style.display = 'block';
+  } else {
+    toggle.classList.remove('on');
+    knob.style.left = '3px';
+    label.textContent = 'Imezimwa';
+    label.style.color = 'var(--text2)';
+    row.style.display = 'none';
+  }
+}
+
+function selectReminderDays(days){
+  reminderDays = days;
+  document.querySelectorAll('.reminder-day-btn').forEach(b=>{
+    b.classList.toggle('active', parseInt(b.dataset.days)===days);
+  });
+}
+
 function onLoanGBChange(){
   const val = document.getElementById('loanGB').value;
   const amtField = document.getElementById('loanAmount');
@@ -1826,6 +1882,7 @@ function addLoan(){
 
   if(!name)   return showToast('Ingiza jina la mkopaji','error');
   if(!amount||amount<=0) return showToast('Ingiza kiasi sahihi','error');
+  if(reminderEnabled && !phone) return showToast('Ingiza nambari ya simu ili kuweza kutuma ukumbusho','error');
 
   let gbLabel='', loanType='';
   if(gbVal && gbVal!=='custom'){
@@ -1838,6 +1895,9 @@ function addLoan(){
   loans.push({
     id: uid(), name, phone, gbLabel, loanType, amount,
     note: note||'', paid: false,
+    remind: reminderEnabled,
+    remindDays: reminderEnabled ? reminderDays : null,
+    remindSent: false,
     dateBorrowed: new Date().toISOString(),
     datePaid: null
   });
@@ -1846,6 +1906,8 @@ function addLoan(){
   // Clear form
   ['loanName','loanPhone','loanAmount','loanNote'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('loanGB').value='';
+  // Reset reminder toggle
+  if(reminderEnabled){ toggleReminder(); }
 
   showToast(`✓ Mkopo wa ${fmt(amount)} kwa ${name} umehifadhiwa`,'success');
   renderLoans();
@@ -1904,12 +1966,16 @@ function buildLoanCard(loan){
   const overdueTag = overdue ? `<span class="overdue-tag">⚠️ Siku ${days} zimepita</span>` : '';
   const paidInfo = loan.paid && loan.datePaid
     ? `<span style="color:var(--success);font-size:.75rem">✅ Aliilipa ${fmtDateTime(loan.datePaid)}</span>` : '';
+  const remindBadge = loan.remind
+    ? `<span style="font-size:.65rem;font-weight:700;padding:.15rem .45rem;border-radius:4px;margin-left:.35rem;background:${loan.remindSent?'rgba(34,197,94,.15)':'rgba(0,151,255,.15)'};color:${loan.remindSent?'var(--success)':'var(--accent2)'}">
+        ${loan.remindSent?'✅ Ukumbusho ulitumwa':'📱 Ukumbusho: Siku '+loan.remindDays}
+       </span>` : '';
 
   return `<div class="loan-card ${cls}">
     <div class="loan-card-header">
       <div>
         <div class="loan-name">${loan.name}${overdueTag}</div>
-        <div class="loan-phone">${loan.phone||'—'}</div>
+        <div class="loan-phone">${loan.phone||'—'}${remindBadge}</div>
       </div>
       <div class="loan-amount">${fmt(loan.amount)}</div>
     </div>
@@ -1923,6 +1989,7 @@ function buildLoanCard(loan){
       ${!loan.paid
         ? `<button class="btn btn-success btn-sm" onclick="markLoanPaid('${loan.id}')">✅ Amelipa</button>`
         : `<button class="btn btn-ghost btn-sm" onclick="markLoanUnpaid('${loan.id}')">↩️ Hajakulipa</button>`}
+      ${!loan.paid && loan.phone ? `<button class="btn btn-ghost btn-sm" onclick="sendManualReminder('${loan.id}')">📱 Mtumie SMS</button>` : ''}
       <button class="btn btn-danger btn-sm" onclick="deleteLoan('${loan.id}')">🗑 Futa</button>
     </div>
   </div>`;
@@ -1985,6 +2052,63 @@ function renderLoansDashSummary(){
 
 // ---- PATCH CACHE TO INCLUDE LOANS ----
 // ============================================================
+// ---- LOAN REMINDERS ----
+async function sendManualReminder(id){
+  const loans = getLoans();
+  const loan  = loans.find(l=>l.id===id);
+  if(!loan||!loan.phone) return showToast('Hakuna nambari ya simu','error');
+  const msg = `Habari ${loan.name}! Ukumbusho wa kirafiki: Bado una deni la ${fmt(loan.amount)}${loan.gbLabel?' ('+loan.gbLabel+')':''}. Tafadhali kamilisha malipo yako. Asante - SMART BUNDLES.`;
+  let phone = loan.phone.replace(/\s+/g,'');
+  if(phone.startsWith('0')) phone = '255'+phone.slice(1);
+  if(phone.startsWith('+')) phone = phone.slice(1);
+  showToast('📱 Inatuma ukumbusho...','');
+  try {
+    const res = await fetch('https://nextsms-proxy.hanshannu9.workers.dev',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({to: phone, text: msg})
+    });
+    const data = await res.json();
+    if(res.ok && !data.error){
+      const idx = loans.findIndex(l=>l.id===id);
+      loans[idx].remindSent = true;
+      saveLoans(loans);
+      showToast(`✅ Ukumbusho ulitumwa kwa ${loan.name}!`,'success');
+      renderLoans();
+    } else {
+      showToast('⚠️ SMS haikutumwa — jaribu tena','warning');
+    }
+  } catch(e){ showToast('⚠️ Tatizo la mtandao','warning'); }
+}
+
+async function checkLoanReminders(){
+  const loans = getLoans();
+  let updated = false;
+  for(const loan of loans){
+    if(loan.paid || !loan.remind || !loan.phone || loan.remindSent) continue;
+    const days = daysAgo(loan.dateBorrowed);
+    if(days >= loan.remindDays){
+      const msg = `Habari ${loan.name}! Ukumbusho wa kirafiki: Bado una deni la ${fmt(loan.amount)}${loan.gbLabel?' ('+loan.gbLabel+')':''}. Tafadhali kamilisha malipo yako. Asante - SMART BUNDLES.`;
+      let phone = loan.phone.replace(/\s+/g,'');
+      if(phone.startsWith('0')) phone = '255'+phone.slice(1);
+      if(phone.startsWith('+')) phone = phone.slice(1);
+      try {
+        const res = await fetch('https://nextsms-proxy.hanshannu9.workers.dev', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({to: phone, text: msg})
+        });
+        const data = await res.json();
+        if(res.ok && !data.error){
+          loan.remindSent = true;
+          updated = true;
+          showToast(`📱 Ukumbusho ulitumwa kwa ${loan.name}`, 'success');
+        }
+      } catch(e){ console.error('Reminder SMS error:', e); }
+    }
+  }
+  if(updated) saveLoans(loans);
+}
+
 // NAVIGATION ----
 function navigateTo(page){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
@@ -2013,7 +2137,11 @@ function setTopbarDate(){
 function initApp(){
   resetSlotsIfNewDay();
   scheduleNextMidnightReset();
-  setTopbarDate();renderAll();calcBuildGbBtns();navigateTo('dashboard');
+  setTopbarDate();
+  renderAll();
+  calcBuildGbBtns();
+  navigateTo('dashboard');
+  checkLoanReminders();
 }
 initLock();
 </script>
