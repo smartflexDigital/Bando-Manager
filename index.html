@@ -2053,11 +2053,19 @@ function renderLoansDashSummary(){
 // ---- PATCH CACHE TO INCLUDE LOANS ----
 // ============================================================
 // ---- LOAN REMINDERS ----
+function buildReminderMsg(loan){
+  const dueDate = new Date(loan.dateBorrowed);
+  dueDate.setDate(dueDate.getDate() + (loan.remindDays||1));
+  const dueDateStr = dueDate.toLocaleDateString('sw-TZ',{day:'2-digit',month:'long',year:'numeric'});
+  const gbInfo = loan.gbLabel ? `${loan.gbLabel} (${fmt(loan.amount)})` : fmt(loan.amount);
+  return `Habari ${loan.name}, Tafadhali kumbuka kufanya malipo ya bando lako la ${gbInfo} kabla ya ${dueDateStr}. Ukihitaji msaada wa kufanya malipo, tupo tayari kukusaidia. Asante kwa kuchagua SMART BUNDLES. Contact - 0612626715`;
+}
+
 async function sendManualReminder(id){
   const loans = getLoans();
   const loan  = loans.find(l=>l.id===id);
   if(!loan||!loan.phone) return showToast('Hakuna nambari ya simu','error');
-  const msg = `Habari ${loan.name}! Ukumbusho wa kirafiki: Bado una deni la ${fmt(loan.amount)}${loan.gbLabel?' ('+loan.gbLabel+')':''}. Tafadhali kamilisha malipo yako. Asante - SMART BUNDLES.`;
+  const msg = buildReminderMsg(loan);
   let phone = loan.phone.replace(/\s+/g,'');
   if(phone.startsWith('0')) phone = '255'+phone.slice(1);
   if(phone.startsWith('+')) phone = phone.slice(1);
@@ -2087,7 +2095,7 @@ async function checkLoanReminders(){
     if(loan.paid || !loan.remind || !loan.phone || loan.remindSent) continue;
     const days = daysAgo(loan.dateBorrowed);
     if(days >= loan.remindDays){
-      const msg = `Habari ${loan.name}! Ukumbusho wa kirafiki: Bado una deni la ${fmt(loan.amount)}${loan.gbLabel?' ('+loan.gbLabel+')':''}. Tafadhali kamilisha malipo yako. Asante - SMART BUNDLES.`;
+      const msg = buildReminderMsg(loan);
       let phone = loan.phone.replace(/\s+/g,'');
       if(phone.startsWith('0')) phone = '255'+phone.slice(1);
       if(phone.startsWith('+')) phone = phone.slice(1);
