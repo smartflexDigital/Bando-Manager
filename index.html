@@ -1989,7 +1989,11 @@ function buildLoanCard(loan){
       ${!loan.paid
         ? `<button class="btn btn-success btn-sm" onclick="markLoanPaid('${loan.id}')">✅ Amelipa</button>`
         : `<button class="btn btn-ghost btn-sm" onclick="markLoanUnpaid('${loan.id}')">↩️ Hajakulipa</button>`}
-      ${!loan.paid && loan.phone ? `<button class="btn btn-ghost btn-sm" onclick="sendManualReminder('${loan.id}')">📱 Mtumie SMS</button>` : ''}
+      ${!loan.paid
+        ? loan.phone
+          ? `<button class="btn btn-ghost btn-sm" onclick="sendManualReminder('${loan.id}')">📱 Mtumie SMS</button>`
+          : `<button class="btn btn-ghost btn-sm" style="opacity:.5;cursor:not-allowed" title="Hakuna nambari ya simu" onclick="showToast('Ongeza nambari ya simu kwanza','error')">📱 Hakuna Namba</button>`
+        : ''}
       <button class="btn btn-danger btn-sm" onclick="deleteLoan('${loan.id}')">🗑 Futa</button>
     </div>
   </div>`;
@@ -2057,7 +2061,9 @@ function buildReminderMsg(loan){
   const dueDate = new Date(loan.dateBorrowed);
   dueDate.setDate(dueDate.getDate() + (loan.remindDays||1));
   const dueDateStr = dueDate.toLocaleDateString('sw-TZ',{day:'2-digit',month:'long',year:'numeric'});
-  const gbInfo = loan.gbLabel ? `${loan.gbLabel} (${fmt(loan.amount)})` : fmt(loan.amount);
+  const gbInfo = loan.gbLabel
+    ? `${loan.gbLabel} (${fmt(loan.amount)})`
+    : fmt(loan.amount);
   return `Habari ${loan.name}, Tafadhali kumbuka kufanya malipo ya bando lako la ${gbInfo} kabla ya ${dueDateStr}. Ukihitaji msaada wa kufanya malipo, tupo tayari kukusaidia. Asante kwa kuchagua SMART BUNDLES. Contact - 0612626715`;
 }
 
