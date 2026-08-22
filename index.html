@@ -502,7 +502,11 @@ canvas{display:block;width:100%!important}
         <div class="form-row">
           <div class="form-group">
             <label>Jina la Mkopaji</label>
-            <input type="text" id="loanName" placeholder="e.g. Juma Ally"/>
+            <input type="text" id="loanName" placeholder="e.g. Juma Ally" oninput="autoFillSmsName()"/>
+          </div>
+          <div class="form-group">
+            <label>Jina la SMS <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(litakalonekana baada ya "Habari...")</span></label>
+            <input type="text" id="loanSmsName" placeholder="e.g. Juma, Boss, Mteja, Rafiki"/>
           </div>
           <div class="form-group">
             <label>Nambari ya Simu</label>
@@ -1856,6 +1860,21 @@ function loanPriceForGB(type, gb){
 let reminderEnabled = false;
 let reminderDays = 1;
 
+function autoFillSmsName(){
+  const name    = document.getElementById('loanName').value.trim();
+  const smsField= document.getElementById('loanSmsName');
+  // Jaza tu kama bado haijabadilishwa na mtumiaji
+  if(!smsField.dataset.edited){
+    smsField.value = name.split(' ')[0] || '';
+  }
+}
+
+// Mark as manually edited
+document.addEventListener('DOMContentLoaded', ()=>{
+  const sf = document.getElementById('loanSmsName');
+  if(sf) sf.addEventListener('input', ()=>{ sf.dataset.edited='1'; });
+});
+
 function toggleReminder(){
   reminderEnabled = !reminderEnabled;
   const toggle = document.getElementById('reminderToggle');
@@ -1893,8 +1912,9 @@ function onLoanGBChange(){
 }
 
 function addLoan(){
-  const name   = document.getElementById('loanName').value.trim();
-  const phone  = document.getElementById('loanPhone').value.trim();
+  const name    = document.getElementById('loanName').value.trim();
+  const smsName = document.getElementById('loanSmsName').value.trim() || name.split(' ')[0] || 'Mteja';
+  const phone   = document.getElementById('loanPhone').value.trim();
   const gbVal  = document.getElementById('loanGB').value;
   const amount = parseFloat(document.getElementById('loanAmount').value);
   const note   = document.getElementById('loanNote').value.trim();
@@ -1912,7 +1932,7 @@ function addLoan(){
 
   const loans = getLoans();
   loans.push({
-    id: uid(), name, phone, gbLabel, loanType, amount,
+    id: uid(), name, smsName, phone, gbLabel, loanType, amount,
     note: note||'', paid: false,
     remind: reminderEnabled,
     remindDays: reminderEnabled ? reminderDays : null,
@@ -1923,7 +1943,7 @@ function addLoan(){
   saveLoans(loans);
 
   // Clear form
-  ['loanName','loanPhone','loanAmount','loanNote'].forEach(id=>document.getElementById(id).value='');
+  ['loanName','loanPhone','loanAmount','loanNote','loanSmsName'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('loanGB').value='';
   // Reset reminder toggle
   if(reminderEnabled){ toggleReminder(); }
@@ -2002,6 +2022,7 @@ function buildLoanCard(loan){
       ${loan.gbLabel ? '📦 '+loan.gbLabel+' · ' : ''}
       📅 Alikopa: ${fmtDateTime(loan.dateBorrowed)}
       ${loan.note ? ' · 📝 '+loan.note : ''}
+      ${loan.smsName ? ` · SMS: "Habari <strong>${loan.smsName}</strong>..."` : ''}
     </div>
     ${paidInfo}
     <div class="loan-actions" style="margin-top:.5rem">
@@ -2108,7 +2129,9 @@ function buildReminderMsg(loan){
   const gbInfo = loan.gbLabel
     ? `${loan.gbLabel} (${fmt(loan.amount)})`
     : fmt(loan.amount);
-  return `Habari ${loan.name}, Tafadhali kumbuka kufanya malipo ya bando lako la ${gbInfo} kabla ya ${dueDateStr}. Ukihitaji msaada wa kufanya malipo, tupo tayari kukusaidia. Asante kwa kuchagua SMART BUNDLES. Contact - 0612626715`;
+  // Tumia smsName kama ipo, vinginevyo jina la kwanza, vinginevyo "Mteja"
+  const salutation = loan.smsName || (loan.name ? loan.name.split(' ')[0] : 'Mteja');
+  return `Habari ${salutation}, Tafadhali kumbuka kufanya malipo ya bando lako la ${gbInfo} kabla ya ${dueDateStr}. Ukihitaji msaada wa kufanya malipo, tupo tayari kukusaidia. Asante kwa kuchagua SMART BUNDLES. Contact - 0612626715`;
 }
 
 async function sendManualReminder(id){
