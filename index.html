@@ -665,6 +665,25 @@ canvas{display:block;width:100%!important}
   </div>
 </div>
 
+<div class="modal-overlay" id="modalAddPhone">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>➕ Ongeza Namba ya Simu</h2>
+      <button class="modal-close" onclick="closeModal('modalAddPhone')">✕</button>
+    </div>
+    <p style="margin-bottom:1rem;color:var(--text2);font-size:.88rem" id="addPhoneName">Mkopaji hana namba ya simu</p>
+    <input type="hidden" id="addPhoneLoanId"/>
+    <div class="form-group">
+      <label>Nambari ya Simu</label>
+      <input type="text" id="addPhoneInput" placeholder="e.g. 0712345678"/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalAddPhone')">Ghairi</button>
+      <button class="btn btn-primary" onclick="savePhoneToLoan()">Hifadhi</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 </div><!-- /appRoot -->
@@ -1992,7 +2011,7 @@ function buildLoanCard(loan){
       ${!loan.paid
         ? loan.phone
           ? `<button class="btn btn-ghost btn-sm" onclick="sendManualReminder('${loan.id}')">📱 Mtumie SMS</button>`
-          : `<button class="btn btn-ghost btn-sm" style="opacity:.5;cursor:not-allowed" title="Hakuna nambari ya simu" onclick="showToast('Ongeza nambari ya simu kwanza','error')">📱 Hakuna Namba</button>`
+          : `<button class="btn btn-ghost btn-sm" style="border-color:var(--warning);color:var(--warning)" onclick="addPhoneToLoan('${loan.id}')">➕ Ongeza Namba</button>`
         : ''}
       <button class="btn btn-danger btn-sm" onclick="deleteLoan('${loan.id}')">🗑 Futa</button>
     </div>
@@ -2057,6 +2076,31 @@ function renderLoansDashSummary(){
 // ---- PATCH CACHE TO INCLUDE LOANS ----
 // ============================================================
 // ---- LOAN REMINDERS ----
+function addPhoneToLoan(id){
+  const loan = getLoans().find(l=>l.id===id);
+  if(!loan) return;
+  document.getElementById('addPhoneLoanId').value = id;
+  document.getElementById('addPhoneName').textContent = `Mkopaji: ${loan.name} — ${fmt(loan.amount)}`;
+  document.getElementById('addPhoneInput').value = '';
+  openModal('modalAddPhone');
+  setTimeout(()=>document.getElementById('addPhoneInput').focus(), 200);
+}
+
+function savePhoneToLoan(){
+  const id    = document.getElementById('addPhoneLoanId').value;
+  const phone = document.getElementById('addPhoneInput').value.trim();
+  if(!phone) return showToast('Ingiza nambari ya simu','error');
+  if(!/^[\d\+\s]{9,15}$/.test(phone)) return showToast('Nambari si sahihi','error');
+  const loans = getLoans();
+  const idx   = loans.findIndex(l=>l.id===id);
+  if(idx<0) return;
+  loans[idx].phone = phone;
+  saveLoans(loans);
+  closeModal('modalAddPhone');
+  showToast(`✓ Namba ya ${loans[idx].name} imeongezwa — unaweza kutuma SMS sasa`,'success');
+  renderLoans();
+}
+
 function buildReminderMsg(loan){
   const dueDate = new Date(loan.dateBorrowed);
   dueDate.setDate(dueDate.getDate() + (loan.remindDays||1));
