@@ -248,7 +248,7 @@ canvas{display:block;width:100%!important}
     <button class="nav-btn" data-page="lines"><span class="nav-icon">📱</span><span>Laini</span></button>
     <button class="nav-btn" data-page="sell"><span class="nav-icon">💸</span><span>Uza Bando</span></button>
     <button class="nav-btn" data-page="calc"><span class="nav-icon">🧮</span><span>Calculator</span></button>
-    <button class="nav-btn" data-page="balance"><span class="nav-icon">💰</span><span>Ongeza Salio</span></button>
+    <button class="nav-btn" data-page="balance"><span class="nav-icon">📦</span><span>Nunua Bando</span></button>
     <button class="nav-btn" data-page="reports"><span class="nav-icon">📊</span><span>Ripoti</span></button>
     <button class="nav-btn" data-page="loans"><span class="nav-icon">🤝</span><span>Mikopo</span></button>
     <button class="nav-btn" data-page="settings"><span class="nav-icon">⚙️</span><span>Mipangilio</span></button>
@@ -442,8 +442,39 @@ canvas{display:block;width:100%!important}
 
     <!-- BALANCE -->
     <section class="page" id="page-balance">
-      <div class="page-header"><h1>Ongeza Salio</h1><p class="page-sub">Rudisha faida kwenye mzunguko au ongeza hela mpya</p></div>
+      <div class="page-header"><h1>Nunua Bando</h1><p class="page-sub">Sajili bando jipya kwenye laini — linaongezwa kwenye foleni ya FIFO</p></div>
+
       <div class="form-card">
+        <div class="form-group">
+          <label>Chagua Laini</label>
+          <select id="balanceLine" onchange="updateBandoPreview()"><option value="">-- Chagua laini --</option></select>
+        </div>
+
+        <!-- Bando zangu za laini hii -->
+        <div id="bandoQueuePreview" style="display:none;margin-bottom:1rem">
+          <div style="font-size:.78rem;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">📦 Mabando Yaliyopo Kwenye Laini</div>
+          <div id="bandoQueueList"></div>
+        </div>
+
+        <div class="form-group">
+          <label>Aina ya Bando</label>
+          <div class="type-toggle">
+            <button type="button" class="type-btn active" data-btype="week" onclick="selectBandoType('week')">📅 Wiki (2 wiki) — TSh 5,000</button>
+            <button type="button" class="type-btn" data-btype="month" onclick="selectBandoType('month')">🗓️ Mwezi (1 mwezi) — TSh 10,000</button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Bei Uliyolipa (TSh)</label>
+            <input type="number" id="bandoBuyPrice" value="5000" min="0"/>
+          </div>
+          <div class="form-group">
+            <label>MB Ulizopewa</label>
+            <input type="number" id="bandoTotalMb" value="6556" min="0"/>
+          </div>
+        </div>
+
         <div class="form-group">
           <label>Chanzo cha Fedha</label>
           <div class="type-toggle">
@@ -451,31 +482,8 @@ canvas{display:block;width:100%!important}
             <button type="button" class="type-btn" data-src="nje" onclick="selectBalanceSource('nje')">💵 Hela Mpya ya Nje</button>
           </div>
         </div>
-        <div class="slot-info-box" id="balanceSourceInfo" style="font-size:.85rem">
-          <div class="sib-row"><span class="sib-label">ℹ️ Maana yake</span></div>
-          <div style="color:var(--text2);margin-top:.3rem" id="balanceSourceDesc">Faida uliyopata kutoka mauzo inaingia tena kama salio la kununulia bando jipya — mzunguko unaendelea.</div>
-        </div>
-        <div class="form-group">
-          <label>Chagua Laini</label>
-          <select id="balanceLine"><option value="">-- Chagua laini --</option></select>
-        </div>
-        <div class="balance-preview" id="balancePreview" style="display:none">
-          <span class="bp-label">Salio la Sasa:</span>
-          <span class="bp-value" id="balanceCurrentVal">TSh 0</span>
-        </div>
-        <div class="form-group">
-          <label>Kiasi cha Kuongeza (TSh)</label>
-          <input type="number" id="balanceAmount" placeholder="e.g. 20000" min="1" oninput="previewNewBalance()"/>
-        </div>
-        <div class="balance-preview new-bal" id="newBalancePreview" style="display:none">
-          <span class="bp-label">Salio Baada ya Kuongeza:</span>
-          <span class="bp-value" id="newBalanceVal">TSh 0</span>
-        </div>
-        <div class="form-group">
-          <label>Maelezo (Hiari)</label>
-          <input type="text" id="balanceNote" placeholder="e.g. Faida ya tarehe 28 Juni"/>
-        </div>
-        <button class="btn btn-success btn-full" onclick="addBalance()">💰 Weka Salio</button>
+
+        <button class="btn btn-success btn-full" onclick="buyBando()">📦 Sajili Bando Jipya</button>
       </div>
 
       <div class="section-title" style="margin-top:2rem">📊 Muhtasari wa Mzunguko</div>
@@ -486,7 +494,7 @@ canvas{display:block;width:100%!important}
         <div class="stat-card warning"><div class="stat-label">Faida Inayobaki</div><div class="stat-value" id="cycRemaining">TSh 0</div><div class="stat-note">Haijawekwa mzunguko</div></div>
       </div>
 
-      <div class="section-title" style="margin-top:1.5rem">Historia ya Salio — kwa Tarehe</div>
+      <div class="section-title" style="margin-top:1.5rem">Historia ya Mabando Yaliyonunuliwa</div>
       <div id="transactionsList"></div>
     </section>
 
@@ -1043,7 +1051,7 @@ let fbApp=null, fbDb=null, fbReady=false;
 let syncStatus='idle'; // idle | syncing | synced | error
 
 // In-memory cache — mirrors Firestore, read/written synchronously by app code
-let _cache = { lines:[], sales:[], transactions:[], slots:[], calcRecords:[], loans:[], lastDate:null };
+let _cache = { lines:[], sales:[], transactions:[], slots:[], calcRecords:[], loans:[], bandos:[], lastDate:null };
 
 function setSyncStatus(s){
   syncStatus=s;
@@ -1092,17 +1100,19 @@ async function initFirebase(){
   try{
     fbApp = firebase.initializeApp(firebaseConfig);
     fbDb  = firebase.firestore();
-    const [lines,sales,transactions,slots,calcRecords,lastDate,loans] = await Promise.all([
+    const [lines,sales,transactions,slots,calcRecords,lastDate,loans,bandos] = await Promise.all([
       loadDocFromFirestore('lines',[]),
       loadDocFromFirestore('sales',[]),
       loadDocFromFirestore('transactions',[]),
       loadDocFromFirestore('slots',[]),
       loadDocFromFirestore('calcRecords',[]),
       loadDocFromFirestore('meta',{}).then(m=>m && m.lastDate ? m.lastDate : null),
-      loadDocFromFirestore('loans',[])
+      loadDocFromFirestore('loans',[]),
+      loadDocFromFirestore('bandos',[])
     ]);
     _cache.lines=lines; _cache.sales=sales; _cache.transactions=transactions;
-    _cache.slots=slots; _cache.calcRecords=calcRecords; _cache.lastDate=lastDate; _cache.loans=loans;
+    _cache.slots=slots; _cache.calcRecords=calcRecords; _cache.lastDate=lastDate;
+    _cache.loans=loans; _cache.bandos=bandos;
     fbReady=true;
     await loadPinFromFirestore();
     setSyncStatus('synced');
@@ -1277,41 +1287,131 @@ function deleteLine(lineId){
   openModal('modalConfirm');
 }
 
-let currentBalanceSource = 'faida'; // 'faida' | 'nje'
+// ============================================================
+// FIFO BANDO SYSTEM
+// ============================================================
+const getBandos  = () => _cache.bandos || [];
+const saveBandos = d  => { _cache.bandos = d; saveDocToFirestore('bandos', d); };
 
-function selectBalanceSource(src){
-  currentBalanceSource = src;
-  document.querySelectorAll('[data-src]').forEach(b=>b.classList.toggle('active', b.dataset.src===src));
-  const desc = document.getElementById('balanceSourceDesc');
-  if(src==='faida'){
-    desc.textContent = 'Faida uliyopata kutoka mauzo inaingia tena kama salio la kununulia bando jipya — mzunguko unaendelea.';
-  } else {
-    desc.textContent = 'Hela mpya inayoingia kutoka nje ya mzunguko — e.g. mtaji wa ziada, mkopo, au fedha nyingine.';
-  }
+function getActiveBandos(lineId){
+  return getBandos()
+    .filter(b=>b.lineId===lineId && b.active)
+    .sort((a,b)=>new Date(a.date)-new Date(b.date));
+}
+function bandoMbLeft(b){ return Math.max(0, b.totalMb-(b.usedMb||0)); }
+function lineMbAvailable(lineId,type){
+  return getActiveBandos(lineId).filter(b=>b.type===type).reduce((s,b)=>s+bandoMbLeft(b),0);
 }
 
-function addBalance(){
+let currentBandoType='week';
+function selectBandoType(type){
+  currentBandoType=type;
+  document.querySelectorAll('[data-btype]').forEach(b=>b.classList.toggle('active',b.dataset.btype===type));
+  const bp=document.getElementById('bandoBuyPrice');
+  const bm=document.getElementById('bandoTotalMb');
+  if(type==='week'){ if(bp)bp.value='5000'; if(bm)bm.value='6556'; }
+  else{              if(bp)bp.value='10000';if(bm)bm.value='13112'; }
+}
+
+function updateBandoPreview(){
   const lineId=document.getElementById('balanceLine').value;
-  const amount=parseFloat(document.getElementById('balanceAmount').value);
-  const note=document.getElementById('balanceNote').value.trim();
-  const source=currentBalanceSource;
-  if(!lineId)return showToast('Chagua laini kwanza','error');
-  if(!amount||amount<=0)return showToast('Ingiza kiasi sahihi','error');
-  const lines=getLines(),idx=lines.findIndex(l=>l.id===lineId);if(idx<0)return;
-  lines[idx].balance=(lines[idx].balance||0)+amount;saveLines(lines);
-  const txns=getTransactions();
-  const sourceLabel = source==='faida' ? '♻️ Faida ya Mzunguko' : '💵 Hela Mpya ya Nje';
-  txns.push({
-    id:uid(), lineId, type:'add', amount, source,
-    note: note || sourceLabel,
-    date: new Date().toISOString()
-  });
-  saveTransactions(txns);
-  document.getElementById('balanceAmount').value='';
-  document.getElementById('balanceNote').value='';
-  showToast(`${fmt(amount)} imeongezwa — ${sourceLabel} ✓`,'success');
-  renderAll();updateBalancePage();updateBalancePreview();
+  const prev=document.getElementById('bandoQueuePreview');
+  const list=document.getElementById('bandoQueueList');
+  if(!lineId||!prev||!list){if(prev)prev.style.display='none';return;}
+  const bandos=getActiveBandos(lineId);
+  if(!bandos.length){prev.style.display='none';return;}
+  prev.style.display='block';
+  list.innerHTML=bandos.map((b,i)=>{
+    const left=bandoMbLeft(b);
+    const pct=((left/b.totalMb)*100).toFixed(0);
+    const col=pct>50?'var(--accent)':pct>20?'var(--warning)':'var(--danger)';
+    return`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.6rem .85rem;margin-bottom:.4rem;font-size:.82rem">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
+        <span style="font-weight:600">#${i+1} ${b.type==='week'?'Wiki':'Mwezi'} ${i===0?'<span style="color:var(--accent);font-size:.7rem">← INAYOTUMIKA</span>':''}</span>
+        <span style="color:${col};font-weight:700">${fmtMB(left)} zimebaki</span>
+      </div>
+      <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${col};border-radius:2px"></div>
+      </div>
+      <div style="color:var(--text3);margin-top:.2rem">${fmtDateTime(b.date)} · Gharama: ${fmt(b.buyPrice)}</div>
+    </div>`;
+  }).join('');
 }
+
+function buyBando(){
+  const lineId  =document.getElementById('balanceLine').value;
+  const buyPrice=parseFloat(document.getElementById('bandoBuyPrice').value)||0;
+  const totalMb =parseFloat(document.getElementById('bandoTotalMb').value)||0;
+  const type    =currentBandoType;
+  const source  =currentBalanceSource;
+  if(!lineId)   return showToast('Chagua laini kwanza','error');
+  if(!buyPrice) return showToast('Ingiza bei uliyolipa','error');
+  if(!totalMb)  return showToast('Ingiza MB ulizopewa','error');
+  const bandos=getBandos();
+  bandos.push({id:uid(),lineId,type,buyPrice,totalMb,usedMb:0,source,active:true,date:new Date().toISOString()});
+  saveBandos(bandos);
+  const txns=getTransactions();
+  txns.push({id:uid(),lineId,type:'add',amount:buyPrice,source,
+    note:`Bando la ${type==='week'?'Wiki':'Mwezi'} — ${fmtMB(totalMb)}`,date:new Date().toISOString()});
+  saveTransactions(txns);
+  // Update MB kwenye laini pia
+  const lines=getLines(),li=lines.findIndex(l=>l.id===lineId);
+  if(li>=0){
+    if(type==='week') lines[li].mbWeek=(lines[li].mbWeek||0)+totalMb;
+    else              lines[li].mbMonth=(lines[li].mbMonth||0)+totalMb;
+    saveLines(lines);
+  }
+  showToast(`✓ Bando la ${type==='week'?'Wiki':'Mwezi'} (${fmtMB(totalMb)}) limesajiliwa!`,'success');
+  updateBandoPreview();renderTransactions();renderAll();renderCycleStats();
+}
+
+// FIFO cost computation
+function computeFifoCost(lineId,type,sellMb){
+  const bandos=getActiveBandos(lineId).filter(b=>b.type===type);
+  let remaining=sellMb,totalCost=0;
+  const used=[];
+  for(const b of bandos){
+    if(remaining<=0) break;
+    const avail=bandoMbLeft(b);
+    const take=Math.min(remaining,avail);
+    totalCost+=(take/b.totalMb)*b.buyPrice;
+    used.push({bando:b,mbUsed:take});
+    remaining-=take;
+  }
+  if(remaining>0.5) return null;
+  return{totalCost:Math.round(totalCost),used};
+}
+
+function applyFifoSell(lineId,type,sellMb){
+  const result=computeFifoCost(lineId,type,sellMb);
+  if(!result) return null;
+  const bandos=getBandos();
+  for(const{bando,mbUsed}of result.used){
+    const idx=bandos.findIndex(b=>b.id===bando.id);
+    if(idx>=0){
+      bandos[idx].usedMb=(bandos[idx].usedMb||0)+mbUsed;
+      if(bandoMbLeft(bandos[idx])<=0.5) bandos[idx].active=false;
+    }
+  }
+  saveBandos(bandos);
+  const lines=getLines(),li=lines.findIndex(l=>l.id===lineId);
+  if(li>=0){
+    if(type==='week') lines[li].mbWeek=Math.max(0,(lines[li].mbWeek||0)-sellMb);
+    else              lines[li].mbMonth=Math.max(0,(lines[li].mbMonth||0)-sellMb);
+    saveLines(lines);
+  }
+  return result.totalCost;
+}
+
+let currentBalanceSource='faida';
+function selectBalanceSource(src){
+  currentBalanceSource=src;
+  document.querySelectorAll('[data-src]').forEach(b=>b.classList.toggle('active',b.dataset.src===src));
+}
+function addBalance(){ buyBando(); }
+function updateBalancePage(){ renderTransactions(); }
+function updateBalancePreview(){ updateBandoPreview(); }
+function previewNewBalance(){}
 
 // ---- SELL ----
 function selectBundleType(type){
@@ -1562,12 +1662,14 @@ function updateSellSlotInfo(){
   if(!line){box.style.display='none';return}
   const slots=getLineSlots(lineId);
   const wLeft=MAX_WEEK-slots.weekUsed,mLeft=MAX_MONTH-slots.monthUsed;
+  const wMb = lineMbAvailable(lineId,'week');
+  const mMb = lineMbAvailable(lineId,'month');
   box.style.display='block';
   box.innerHTML=`
     <div class="sib-row"><span class="sib-label">Slots za Wiki zilizobaki</span><span class="sib-val ${wLeft===0?'full':'ok'}">${wLeft}/${MAX_WEEK}</span></div>
     <div class="sib-row"><span class="sib-label">Slots za Mwezi zilizobaki</span><span class="sib-val ${mLeft===0?'full':'ok'}">${mLeft}/${MAX_MONTH}</span></div>
-    <div class="sib-row"><span class="sib-label">MB za Wiki</span><span class="sib-val">${fmtMB(line.mbWeek||0)}</span></div>
-    <div class="sib-row"><span class="sib-label">MB za Mwezi</span><span class="sib-val">${fmtMB(line.mbMonth||0)}</span></div>`;
+    <div class="sib-row"><span class="sib-label">MB za Wiki (FIFO)</span><span class="sib-val ${wMb>0?'ok':'full'}">${fmtMB(wMb)}</span></div>
+    <div class="sib-row"><span class="sib-label">MB za Mwezi (FIFO)</span><span class="sib-val ${mMb>0?'ok':'full'}">${fmtMB(mMb)}</span></div>`;
   buildSellGbShortcuts();
   updateSellMbStatus();
 }
@@ -1588,19 +1690,14 @@ function sellBundle(){
   const slots = getLineSlots(lineId);
   if(type==='week'  && slots.weekUsed >=MAX_WEEK)  return showToast('⚠️ Slots za Wiki zimekwisha leo!','warning');
   if(type==='month' && slots.monthUsed>=MAX_MONTH) return showToast('⚠️ Slots za Mwezi zimekwisha leo!','warning');
-  // MB check
-  const availMb = type==='week' ? (line.mbWeek||0) : (line.mbMonth||0);
-  if(sellMb > availMb) return showToast(`❌ MB haitoshi! Zilizopo: ${fmtMB(availMb)}`,'error');
-  // Compute cost from MB ratio
-  const totalBandoMb  = type==='week' ? 6556 : 13112;
-  const bandoCost     = type==='week' ? 5000 : 10000;
-  const costShare     = Math.round((sellMb / totalBandoMb) * bandoCost);
-  const profit        = amount - costShare;
-  const mbLabel       = fmtMB(sellMb);
-  // Deduct MB
-  if(type==='week')  lines[idx].mbWeek  = Math.max(0,(line.mbWeek||0)  - sellMb);
-  else               lines[idx].mbMonth = Math.max(0,(line.mbMonth||0) - sellMb);
-  saveLines(lines);
+  // MB check — tumia FIFO
+  const fifoResult = computeFifoCost(lineId, type, sellMb);
+  if(!fifoResult) return showToast(`❌ MB haitoshi! Wiki: ${fmtMB(lineMbAvailable(lineId,'week'))}, Mwezi: ${fmtMB(lineMbAvailable(lineId,'month'))}`,'error');
+  const costShare = fifoResult.totalCost;
+  const profit    = amount - costShare;
+  const mbLabel   = fmtMB(sellMb);
+  // Apply FIFO — punguza MB kutoka mabando halisi
+  applyFifoSell(lineId, type, sellMb);
   // Save sale
   const sales = getSales();
   sales.push({
