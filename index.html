@@ -140,6 +140,18 @@ canvas{display:block;width:100%!important}
 .toggle-switch.on{background:var(--accent)!important}
 .reminder-day-btn{padding:.35rem .8rem;border-radius:6px;border:1.5px solid var(--border);background:var(--bg3);color:var(--text2);font-family:var(--font);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .15s}
 .reminder-day-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,196,167,.08)}
+/* MB BAR */
+.mb-bar-wrap{margin:.4rem 0}
+.mb-bar-track{height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.mb-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.mb-bar-fill.ok{background:var(--accent)}
+.mb-bar-fill.mid{background:var(--warning)}
+.mb-bar-fill.low{background:var(--danger)}
+/* PROFIT PIN KEYPAD */
+.pp-key{aspect-ratio:1;border-radius:50%;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:1.1rem;font-weight:600;font-family:var(--font);cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center}
+.pp-key:active{transform:scale(.92);background:var(--accent);color:#000}
+.pp-dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:all .15s}
+.pp-dot.filled{background:var(--accent);border-color:var(--accent)}
 .filter-btn{padding:.4rem .9rem;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-family:var(--font);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .15s}
 .filter-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
 .report-line-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem 1.25rem;margin-bottom:.6rem}
@@ -246,25 +258,51 @@ canvas{display:block;width:100%!important}
 
     <!-- DASHBOARD -->
     <section class="page active" id="page-dashboard">
-      <div class="page-header"><h1>Dashibodi</h1><p class="page-sub">Muhtasari wa biashara yako leo</p></div>
-      <div class="stat-grid">
-        <div class="stat-card accent"><div class="stat-label">Jumla ya Salio</div><div class="stat-value" id="statTotalBalance">TSh 0</div><div class="stat-note">Laini zote</div></div>
-        <div class="stat-card"><div class="stat-label">Mapato Leo</div><div class="stat-value" id="statTodaySales">TSh 0</div><div class="stat-note" id="statTodayCount">0 mauzo</div></div>
-        <div class="stat-card success"><div class="stat-label">Faida Leo</div><div class="stat-value" id="statTodayProfit">TSh 0</div><div class="stat-note" id="statTodayCost">Gharama: TSh 0</div></div>
-        <div class="stat-card success"><div class="stat-label">Faida Jumla (Zote)</div><div class="stat-value" id="statAllTimeProfit">TSh 0</div><div class="stat-note" id="statAllTimeReinvest">Mzunguko: TSh 0</div></div>
-        <div class="stat-card"><div class="stat-label">Idadi ya Laini</div><div class="stat-value" id="statLineCount">0</div><div class="stat-note">Laini zilizosajiliwa</div></div>
-        <div class="stat-card warning"><div class="stat-label">Laini Zimejaa</div><div class="stat-value" id="statFullLines">0</div><div class="stat-note">Slots zote zimekwisha</div></div>
-        <div class="stat-card danger" id="statLoansCard" style="border-color:rgba(239,68,68,.3);display:none"><div class="stat-label">⚠️ Wadeni</div><div class="stat-value" id="statLoansCount" style="color:var(--danger)">0</div><div class="stat-note" id="statLoansAmt">Hawajalipa: TSh 0</div></div>
+      <div class="page-header">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><h1>Dashibodi</h1><p class="page-sub">Muhtasari wa biashara yako leo</p></div>
+          <button class="btn btn-ghost btn-sm" onclick="toggleProfitView()" id="dashEyeBtn" style="gap:.4rem;font-size:.85rem">
+            👁 <span id="dashEyeLabel">Ona Takwimu</span>
+          </button>
+        </div>
       </div>
-      <div class="section-title">Hali ya Laini Leo</div>
-      <div class="lines-grid" id="dashboardLines"></div>
+
+      <!-- LOCKED OVERLAY -->
+      <div id="dashLocked" style="display:block">
+        <div style="text-align:center;padding:3rem 1rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-r);margin-bottom:1.5rem">
+          <div style="font-size:3rem;margin-bottom:1rem">🔒</div>
+          <div style="font-size:1.1rem;font-weight:700;margin-bottom:.5rem">Takwimu zimefichwa</div>
+          <div style="color:var(--text2);font-size:.88rem;margin-bottom:1.5rem">Bonyeza "Ona Takwimu" juu kulia na uingize PIN ya namba 4 kuona taarifa zako</div>
+          <button class="btn btn-primary" onclick="toggleProfitView()">👁 Ingiza PIN Kuona</button>
+        </div>
+        <div class="section-title">Hali ya Laini Leo</div>
+        <div class="lines-grid" id="dashboardLinesLocked"></div>
+      </div>
+
+      <!-- UNLOCKED CONTENT -->
+      <div id="dashUnlocked" style="display:none">
+        <div class="stat-grid">
+          <div class="stat-card accent"><div class="stat-label">Jumla ya Salio</div><div class="stat-value" id="statTotalBalance">TSh 0</div><div class="stat-note">Laini zote</div></div>
+          <div class="stat-card"><div class="stat-label">Mapato Leo</div><div class="stat-value" id="statTodaySales">TSh 0</div><div class="stat-note" id="statTodayCount">0 mauzo</div></div>
+          <div class="stat-card success"><div class="stat-label">Faida Leo</div><div class="stat-value" id="statTodayProfit">TSh 0</div><div class="stat-note" id="statTodayCost">Gharama: TSh 0</div></div>
+          <div class="stat-card success"><div class="stat-label">Faida Jumla (Zote)</div><div class="stat-value" id="statAllTimeProfit">TSh 0</div><div class="stat-note" id="statAllTimeReinvest">Mzunguko: TSh 0</div></div>
+          <div class="stat-card"><div class="stat-label">Idadi ya Laini</div><div class="stat-value" id="statLineCount">0</div><div class="stat-note">Laini zilizosajiliwa</div></div>
+          <div class="stat-card warning"><div class="stat-label">Laini Zimejaa</div><div class="stat-value" id="statFullLines">0</div><div class="stat-note">Slots zote zimekwisha</div></div>
+          <div class="stat-card danger" id="statLoansCard" style="border-color:rgba(239,68,68,.3);display:none"><div class="stat-label">⚠️ Wadeni</div><div class="stat-value" id="statLoansCount" style="color:var(--danger)">0</div><div class="stat-note" id="statLoansAmt">Hawajalipa: TSh 0</div></div>
+        </div>
+        <div class="section-title">Hali ya Laini Leo</div>
+        <div class="lines-grid" id="dashboardLines"></div>
+      </div>
     </section>
 
     <!-- LINES -->
     <section class="page" id="page-lines">
       <div class="page-header"><h1>Usimamizi wa Laini</h1><p class="page-sub">Ongeza, hariri, au futa laini zako</p></div>
-      <button class="btn btn-primary" onclick="openModal('modalAddLine')">➕ Ongeza Laini Mpya</button>
-      <div class="lines-grid" id="linesGrid" style="margin-top:1.5rem"></div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem">
+        <button class="btn btn-primary" onclick="openModal('modalAddLine')">➕ Ongeza Laini Mpya</button>
+        <button class="btn btn-ghost" onclick="resetAllMb()" style="border-color:var(--warning);color:var(--warning)">🔄 Reset MB Zote kuwa 0</button>
+      </div>
+      <div class="lines-grid" id="linesGrid"></div>
     </section>
 
     <!-- SELL -->
@@ -276,6 +314,19 @@ canvas{display:block;width:100%!important}
           <select id="sellLine" onchange="updateSellSlotInfo()"><option value="">-- Chagua laini --</option></select>
         </div>
         <div class="slot-info-box" id="sellSlotInfo" style="display:none"></div>
+
+        <!-- MB ZA LAINI -->
+        <div id="sellMbStatus" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:1rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+            <span style="font-size:.82rem;color:var(--text2)">MB Zilizobaki kwenye Laini</span>
+            <span style="font-weight:700;font-size:1.1rem" id="sellLineMbLeft">0 MB</span>
+          </div>
+          <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+            <div id="sellLineMbBar" style="height:100%;border-radius:3px;background:var(--accent);transition:width .3s;width:0%"></div>
+          </div>
+          <div style="font-size:.72rem;color:var(--text3);margin-top:.3rem" id="sellLineMbTotal"></div>
+        </div>
+
         <div class="form-group">
           <label>Aina ya Bando</label>
           <div class="type-toggle">
@@ -283,29 +334,44 @@ canvas{display:block;width:100%!important}
             <button class="type-btn" data-type="month" onclick="selectBundleType('month')">🗓️ Mwezi (1 mwezi)</button>
           </div>
         </div>
+
         <div class="form-row">
           <div class="form-group">
-            <label>Bei ya Kununua / Gharama (TSh)</label>
-            <input type="number" id="sellCost" placeholder="e.g. 4000" min="0" oninput="updateProfitPreview()"/>
+            <label>MB Unazouza</label>
+            <input type="number" id="sellMbAmount" placeholder="e.g. 1024 (GB1), 3072 (GB3)" min="1" oninput="onSellMbInput()"/>
           </div>
           <div class="form-group">
-            <label>Bei ya Kuuza / Mapato (TSh)</label>
+            <label>Bei ya Kuuza (TSh)</label>
             <input type="number" id="sellAmount" placeholder="e.g. 5000" min="0" oninput="updateProfitPreview()"/>
           </div>
         </div>
-        <div class="profit-preview" id="profitPreview" style="display:none">
-          <div class="pp-row"><span class="pp-label">📥 Gharama</span><span class="pp-val cost" id="ppCost">TSh 0</span></div>
-          <div class="pp-row"><span class="pp-label">📤 Mapato</span><span class="pp-val revenue" id="ppRevenue">TSh 0</span></div>
-          <div class="pp-divider"></div>
-          <div class="pp-row"><span class="pp-label">💰 Faida</span><span class="pp-val profit" id="ppProfit">TSh 0</span></div>
+
+        <!-- GB SHORTCUTS -->
+        <div class="form-group">
+          <label>Haraka — Chagua GB</label>
+          <div class="type-toggle" id="sellGbShortcuts" style="flex-wrap:wrap;gap:.4rem"></div>
         </div>
+
+        <!-- PROFIT PREVIEW — imefichwa, inaonekana kwa PIN tu -->
+        <div id="profitPreviewWrap" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:1rem">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:.82rem;color:var(--text2)">💰 Taarifa za Faida</span>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="toggleProfitView()" id="profitEyeBtn" style="padding:.25rem .6rem;font-size:.8rem">👁 Ona</button>
+          </div>
+          <div id="profitHidden" style="margin-top:.6rem">
+            <div style="text-align:center;color:var(--text3);font-size:.82rem;letter-spacing:.1em">•••• •••• ••••</div>
+          </div>
+          <div id="profitVisible" style="display:none;margin-top:.6rem">
+            <div class="pp-row"><span class="pp-label">📥 Gharama</span><span class="pp-val cost" id="ppCost">TSh 0</span></div>
+            <div class="pp-row"><span class="pp-label">📤 Mapato</span><span class="pp-val revenue" id="ppRevenue">TSh 0</span></div>
+            <div class="pp-divider"></div>
+            <div class="pp-row"><span class="pp-label">💰 Faida</span><span class="pp-val profit" id="ppProfit">TSh 0</span></div>
+          </div>
+        </div>
+
         <div class="form-row">
           <div class="form-group">
-            <label>MB / GB (Hiari)</label>
-            <input type="text" id="sellMb" placeholder="e.g. 1000MB au 1GB"/>
-          </div>
-          <div class="form-group">
-            <label>Nambari ya Mnunuzi — SMS itatumwa kiotomatiki</label>
+            <label>Nambari ya Mnunuzi — SMS itatumwa</label>
             <input type="text" id="sellBuyerPhone" placeholder="e.g. 0712345678"/>
           </div>
         </div>
@@ -624,7 +690,24 @@ canvas{display:block;width:100%!important}
       </div>
 
       <div class="form-card" style="max-width:420px;margin-top:1rem">
-        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:1rem">ℹ️ Taarifa za Mfumo</div>
+        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:1rem">👁 PIN ya Kuona Faida</div>
+        <p style="font-size:.83rem;color:var(--text2);margin-bottom:1rem">PIN hii (namba 4) inatumika kuona taarifa za faida — tofauti na PIN ya kufungulia mfumo.</p>
+        <div class="form-group">
+          <label>PIN ya Sasa ya Faida</label>
+          <input type="password" id="profitOldPin" placeholder="Ingiza PIN ya sasa" maxlength="4" inputmode="numeric"/>
+        </div>
+        <div class="form-group">
+          <label>PIN Mpya ya Faida (namba 4)</label>
+          <input type="password" id="profitNewPin" placeholder="PIN mpya" maxlength="4" inputmode="numeric"/>
+        </div>
+        <div class="form-group">
+          <label>Thibitisha PIN Mpya</label>
+          <input type="password" id="profitConfirmPin" placeholder="Rudia PIN mpya" maxlength="4" inputmode="numeric"/>
+        </div>
+        <div id="profitPinMsg" style="font-size:.83rem;margin-bottom:.75rem;display:none"></div>
+        <button class="btn btn-primary btn-full" onclick="changeProfitPin()">👁 Hifadhi PIN ya Faida</button>
+        <p style="font-size:.75rem;color:var(--text3);margin-top:.5rem">PIN ya default ni: 0000</p>
+      </div>
         <div class="slot-info-box">
           <div class="sib-row"><span class="sib-label">Toleo</span><span class="sib-val">BandoManager v2.0</span></div>
           <div class="sib-row"><span class="sib-label">Database</span><span class="sib-val" style="color:var(--success)">Firebase Firestore ☁️</span></div>
@@ -635,7 +718,7 @@ canvas{display:block;width:100%!important}
     </section>
 
   </main>
-</div>
+</div><!-- /layout -->
 
 <!-- MODALS -->
 <div class="modal-overlay" id="modalAddLine">
@@ -647,7 +730,24 @@ canvas{display:block;width:100%!important}
     <input type="hidden" id="editLineId"/>
     <div class="form-group"><label>Jina la Laini</label><input type="text" id="lineName" placeholder="e.g. Laini 1 - Tigo"/></div>
     <div class="form-group"><label>Nambari ya Simu</label><input type="text" id="linePhone" placeholder="e.g. 0712345678"/></div>
-    <div class="form-group"><label>Salio la Awali (TSh)</label><input type="number" id="lineBalance" placeholder="0" min="0"/></div>
+    <div class="form-group"><label>Salio la Awali (TSh) — weka 0</label><input type="number" id="lineBalance" placeholder="0" min="0"/></div>
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem">
+      <div style="font-size:.78rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.75rem">📶 MB za Laini (Hiari)</div>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:.5rem">
+          <label>MB za Wiki</label>
+          <input type="number" id="lineMbWeek" placeholder="e.g. 6556" min="0"/>
+        </div>
+        <div class="form-group" style="margin-bottom:.5rem">
+          <label>MB za Mwezi</label>
+          <input type="number" id="lineMbMonth" placeholder="e.g. 13112" min="0"/>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="quickAddMb('week')">➕ Wiki (6,556MB)</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="quickAddMb('month')">➕ Mwezi (13,112MB)</button>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modalAddLine')">Ghairi</button>
       <button class="btn btn-primary" onclick="saveLine()">Hifadhi</button>
@@ -685,6 +785,20 @@ canvas{display:block;width:100%!important}
       <button class="btn btn-ghost" onclick="closeModal('modalAddPhone')">Ghairi</button>
       <button class="btn btn-primary" onclick="savePhoneToLoan()">Hifadhi</button>
     </div>
+  </div>
+</div>
+
+<!-- Profit PIN Modal -->
+<div class="modal-overlay" id="modalProfitPin">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>👁 Ingiza PIN ya Faida</h2>
+      <button class="modal-close" onclick="closeModal('modalProfitPin')">✕</button>
+    </div>
+    <p style="color:var(--text2);font-size:.85rem;margin-bottom:1rem">Ingiza PIN ya namba 4 kuona taarifa za faida</p>
+    <div style="display:flex;justify-content:center;gap:.5rem;margin-bottom:1rem" id="profitPinDots"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem" id="profitPinKeypad"></div>
+    <div id="profitPinError" style="color:var(--danger);font-size:.8rem;text-align:center;margin-top:.5rem;display:none">PIN si sahihi — jaribu tena</div>
   </div>
 </div>
 
@@ -840,6 +954,20 @@ function showPinMsg(msg, ok){
   el.style.color=ok?'var(--success)':'var(--danger)';
   el.textContent=msg;
   if(ok) setTimeout(()=>el.style.display='none', 3000);
+}
+
+function changeProfitPin(){
+  const old     = document.getElementById('profitOldPin').value;
+  const newPin  = document.getElementById('profitNewPin').value;
+  const confirm = document.getElementById('profitConfirmPin').value;
+  const msg     = document.getElementById('profitPinMsg');
+  const show    = (txt,ok)=>{msg.style.display='block';msg.style.color=ok?'var(--success)':'var(--danger)';msg.textContent=txt;if(ok)setTimeout(()=>msg.style.display='none',3000)};
+  if(hashPin(old)!==PROFIT_PIN_HASH) return show('❌ PIN ya sasa si sahihi','error');
+  if(!/^\d{4}$/.test(newPin))        return show('PIN lazima iwe namba 4 tu','error');
+  if(newPin!==confirm)               return show('❌ PIN mpya hazilingani','error');
+  saveProfitPin(hashPin(newPin));
+  ['profitOldPin','profitNewPin','profitConfirmPin'].forEach(id=>document.getElementById(id).value='');
+  show('✅ PIN ya faida imebadilishwa!',true);
 }
 
 function changePin(){
@@ -1047,23 +1175,77 @@ function updateLineSlots(lineId,type){
 }
 
 // ---- LINE MANAGEMENT ----
+function resetLineMb(lineId){
+  const lines = getLines();
+  const line  = lines.find(l=>l.id===lineId);
+  if(!line) return;
+  document.getElementById('confirmMessage').textContent =
+    `Reset MB za "${line.name}" kuwa 0? (Wiki: ${fmtMB(line.mbWeek||0)}, Mwezi: ${fmtMB(line.mbMonth||0)})`;
+  document.getElementById('confirmBtn').onclick = ()=>{
+    const idx = lines.findIndex(l=>l.id===lineId);
+    lines[idx].mbWeek  = 0;
+    lines[idx].mbMonth = 0;
+    saveLines(lines);
+    closeModal('modalConfirm');
+    showToast(`✓ MB za ${line.name} zimewekwa 0`,'success');
+    renderAll();
+  };
+  openModal('modalConfirm');
+}
+
+function resetAllMb(){
+  const lines = getLines();
+  if(!lines.length) return showToast('Hakuna laini','error');
+  document.getElementById('confirmMessage').textContent =
+    `Reset MB za laini ZOTE (${lines.length}) kuwa 0? Hii haitabadilisha mauzo au faida zilizohifadhiwa.`;
+  document.getElementById('confirmBtn').onclick = ()=>{
+    const updated = lines.map(l=>({...l, mbWeek:0, mbMonth:0}));
+    saveLines(updated);
+    closeModal('modalConfirm');
+    showToast(`✓ MB za laini zote ${lines.length} zimewekwa 0`,'success');
+    renderAll();
+  };
+  openModal('modalConfirm');
+}
+
+function quickAddMb(type){
+  const field = type==='week' ? 'lineMbWeek' : 'lineMbMonth';
+  const current = parseFloat(document.getElementById(field).value)||0;
+  const add = type==='week' ? 6556 : 13112;
+  document.getElementById(field).value = current + add;
+}
+
 function saveLine(){
-  const id=document.getElementById('editLineId').value;
-  const name=document.getElementById('lineName').value.trim();
-  const phone=document.getElementById('linePhone').value.trim();
-  const balance=parseFloat(document.getElementById('lineBalance').value)||0;
-  if(!name)return showToast('Ingiza jina la laini','error');
-  if(!phone)return showToast('Ingiza nambari ya simu','error');
-  const lines=getLines();
+  const id      = document.getElementById('editLineId').value;
+  const name    = document.getElementById('lineName').value.trim();
+  const phone   = document.getElementById('linePhone').value.trim();
+  const mbWeek  = document.getElementById('lineMbWeek').value;
+  const mbMonth = document.getElementById('lineMbMonth').value;
+  if(!name)  return showToast('Ingiza jina la laini','error');
+  if(!phone) return showToast('Ingiza nambari ya simu','error');
+  const lines = getLines();
   if(id){
-    const idx=lines.findIndex(l=>l.id===id);
-    if(idx>=0){lines[idx].name=name;lines[idx].phone=phone}
+    const idx = lines.findIndex(l=>l.id===id);
+    if(idx>=0){
+      lines[idx].name  = name;
+      lines[idx].phone = phone;
+      // Kama mtumiaji ameweka namba — weka exactly hiyo (0 inakubalika)
+      if(mbWeek  !== '') lines[idx].mbWeek  = parseFloat(mbWeek)||0;
+      if(mbMonth !== '') lines[idx].mbMonth = parseFloat(mbMonth)||0;
+    }
     showToast('Laini imesasishwa ✓','success');
-  }else{
-    lines.push({id:uid(),name,phone,balance});
+  } else {
+    lines.push({
+      id:uid(), name, phone,
+      balance: 0,
+      mbWeek:  parseFloat(mbWeek)||0,
+      mbMonth: parseFloat(mbMonth)||0
+    });
     showToast('Laini mpya imeongezwa ✓','success');
   }
-  saveLines(lines);closeModal('modalAddLine');renderAll();
+  saveLines(lines);
+  closeModal('modalAddLine');
+  renderAll();
 }
 
 function editLine(lineId){
@@ -1073,7 +1255,13 @@ function editLine(lineId){
   document.getElementById('lineName').value=line.name;
   document.getElementById('linePhone').value=line.phone;
   const bf=document.getElementById('lineBalance');
-  bf.value=line.balance;bf.disabled=true;bf.title='Badilisha salio kupitia ukurasa wa Ongeza Salio';
+  bf.value=line.balance||0; bf.disabled=true;
+  bf.title='Badilisha salio kupitia ukurasa wa Ongeza Salio';
+  // Pre-fill MB values — mtumiaji anaweza kubadilisha au kufuta na kuweka 0
+  document.getElementById('lineMbWeek').value  = line.mbWeek  || 0;
+  document.getElementById('lineMbMonth').value = line.mbMonth || 0;
+  document.getElementById('lineMbWeek').placeholder  = 'e.g. 6556';
+  document.getElementById('lineMbMonth').placeholder = 'e.g. 13112';
   openModal('modalAddLine');
 }
 
@@ -1127,21 +1315,131 @@ function addBalance(){
 function selectBundleType(type){
   currentBundleType=type;
   document.querySelectorAll('.type-btn').forEach(b=>b.classList.toggle('active',b.dataset.type===type));
+  buildSellGbShortcuts();
   updateSellSlotInfo();
+  updateSellMbStatus();
+}
+
+// ---- PROFIT PIN SYSTEM ----
+let PROFIT_PIN_HASH = localStorage.getItem('bm_profit_pin') || hashPin('0000');
+let profitPinEntry  = '';
+let profitVisible   = false;
+let profitHideTimer = null;
+
+function saveProfitPin(hash){ localStorage.setItem('bm_profit_pin',hash); PROFIT_PIN_HASH=hash; }
+
+function toggleProfitView(){
+  if(profitVisible){ hideProfitInfo(); return; }
+  openProfitPinModal();
+}
+
+function openProfitPinModal(){
+  profitPinEntry='';
+  buildProfitPinKeypad();
+  renderProfitPinDots();
+  document.getElementById('profitPinError').style.display='none';
+  openModal('modalProfitPin');
+}
+
+function buildProfitPinKeypad(){
+  const keys=['1','2','3','4','5','6','7','8','9','C','0','⌫'];
+  const box=document.getElementById('profitPinKeypad');
+  box.innerHTML=keys.map(k=>`
+    <button type="button" class="pp-key" onclick="profitPinPress('${k}')">${k}</button>`).join('');
+}
+
+function renderProfitPinDots(){
+  const box=document.getElementById('profitPinDots');
+  box.innerHTML=[0,1,2,3].map(i=>`<div class="pp-dot${i<profitPinEntry.length?' filled':''}"></div>`).join('');
+}
+
+function profitPinPress(k){
+  if(k==='C'){profitPinEntry='';renderProfitPinDots();return}
+  if(k==='⌫'){profitPinEntry=profitPinEntry.slice(0,-1);renderProfitPinDots();return}
+  if(profitPinEntry.length>=4) return;
+  profitPinEntry+=k;
+  renderProfitPinDots();
+  if(profitPinEntry.length===4){
+    if(hashPin(profitPinEntry)===PROFIT_PIN_HASH){
+      closeModal('modalProfitPin');
+      showProfitInfo();
+    } else {
+      document.getElementById('profitPinError').style.display='block';
+      setTimeout(()=>{profitPinEntry='';renderProfitPinDots();document.getElementById('profitPinError').style.display='none';},1000);
+    }
+  }
+}
+
+function showProfitInfo(){
+  profitVisible=true;
+  // Dashboard — onyesha takwimu zote
+  const locked   = document.getElementById('dashLocked');
+  const unlocked = document.getElementById('dashUnlocked');
+  const eyeBtn   = document.getElementById('dashEyeBtn');
+  const eyeLabel = document.getElementById('dashEyeLabel');
+  if(locked)   locked.style.display='none';
+  if(unlocked) unlocked.style.display='block';
+  if(eyeBtn)   eyeBtn.style.color='var(--accent)';
+  if(eyeLabel) eyeLabel.textContent='Ficha Takwimu';
+  // Sell page profit
+  const h=document.getElementById('profitHidden');
+  const v=document.getElementById('profitVisible');
+  const btn=document.getElementById('profitEyeBtn');
+  if(h) h.style.display='none';
+  if(v) v.style.display='block';
+  if(btn){btn.textContent='🙈 Ficha';btn.style.color='var(--accent)'}
+  // Auto-hide after 30 seconds
+  clearTimeout(profitHideTimer);
+  profitHideTimer=setTimeout(hideProfitInfo, 30000);
+  renderDashboard();
+  renderCycleStats();
+}
+
+function hideProfitInfo(){
+  profitVisible=false;
+  // Dashboard — ficha takwimu
+  const locked   = document.getElementById('dashLocked');
+  const unlocked = document.getElementById('dashUnlocked');
+  const eyeBtn   = document.getElementById('dashEyeBtn');
+  const eyeLabel = document.getElementById('dashEyeLabel');
+  if(locked)   locked.style.display='block';
+  if(unlocked) unlocked.style.display='none';
+  if(eyeBtn)   eyeBtn.style.color='';
+  if(eyeLabel) eyeLabel.textContent='Ona Takwimu';
+  // Sell page profit
+  const h=document.getElementById('profitHidden');
+  const v=document.getElementById('profitVisible');
+  const btn=document.getElementById('profitEyeBtn');
+  if(h) h.style.display='block';
+  if(v) v.style.display='none';
+  if(btn){btn.textContent='👁 Ona';btn.style.color=''}
+  clearTimeout(profitHideTimer);
+  // Show line cards without stats even when locked
+  renderDashboardLocked();
 }
 
 function updateProfitPreview(){
-  const cost=parseFloat(document.getElementById('sellCost').value)||0;
-  const rev=parseFloat(document.getElementById('sellAmount').value)||0;
-  const box=document.getElementById('profitPreview');
-  if(!cost&&!rev){box.style.display='none';return}
-  const profit=rev-cost;
-  box.style.display='block';
-  document.getElementById('ppCost').textContent=fmt(cost);
-  document.getElementById('ppRevenue').textContent=fmt(rev);
-  document.getElementById('ppProfit').textContent=fmt(profit);
-  document.getElementById('ppProfit').style.color=profit>=0?'var(--success)':'var(--danger)';
+  const sellMb  = parseFloat(document.getElementById('sellMbAmount')?.value)||0;
+  const amount  = parseFloat(document.getElementById('sellAmount')?.value)||0;
+  const type    = currentBundleType;
+  const totalBandoMb = type==='week'?6556:13112;
+  const bandoCost    = type==='week'?5000:10000;
+  const costShare    = sellMb>0 ? Math.round((sellMb/totalBandoMb)*bandoCost) : 0;
+  const profit       = amount - costShare;
+  // Update hidden profit fields (shown only after PIN)
+  const ppCost   = document.getElementById('ppCost');
+  const ppRev    = document.getElementById('ppRevenue');
+  const ppProfit = document.getElementById('ppProfit');
+  if(ppCost)   ppCost.textContent   = fmt(costShare);
+  if(ppRev)    ppRev.textContent    = fmt(amount);
+  if(ppProfit){
+    ppProfit.textContent  = fmt(profit);
+    ppProfit.style.color  = profit>=0?'var(--success)':'var(--danger)';
+  }
+  updateSellMbStatus();
 }
+
+
 
 function updateSellSlotInfo(){
   const lineId=document.getElementById('sellLine').value;
@@ -1195,39 +1493,125 @@ async function sendNextSMS(phone, message){
   }
 }
 
-function sellBundle(){
+// ---- SELL PAGE MB FUNCTIONS ----
+function buildSellGbShortcuts(){
+  const type = currentBundleType;
+  const lineId = document.getElementById('sellLine').value;
+  const line = getLines().find(l=>l.id===lineId);
+  const availMb = line ? ((type==='week'?(line.mbWeek||0):(line.mbMonth||0))) : 99999;
+  const box = document.getElementById('sellGbShortcuts');
+  if(!box) return;
+  const opts = type==='week'
+    ? [{gb:3,mb:3072},{gb:4,mb:4096},{gb:5,mb:5120},{gb:6,mb:6144},{gb:7,mb:7168},{gb:8,mb:8192},{gb:9,mb:9216}]
+    : [{gb:10,mb:10240},{gb:11,mb:11264},{gb:12,mb:12288},{gb:13,mb:13312},{gb:14,mb:14336},{gb:15,mb:15360}];
+  box.innerHTML = opts.map(o=>{
+    const can = o.mb <= availMb;
+    return `<button type="button" class="type-btn${!can?' disabled':''}${!can?' style="opacity:.4;pointer-events:none"':''}"
+      onclick="selectSellGb(${o.gb},${o.mb},'${type}')">
+      GB${o.gb}
+    </button>`;
+  }).join('');
+}
+
+function selectSellGb(gb, mb, type){
+  document.getElementById('sellMbAmount').value = mb;
+  const price = type==='week' ? gb*1000+500 : gb*1000;
+  document.getElementById('sellAmount').value = price;
+  updateProfitPreview();
+}
+
+function onSellMbInput(){
+  updateProfitPreview();
+  updateSellMbStatus();
+}
+
+function updateSellMbStatus(){
+  const lineId = document.getElementById('sellLine').value;
+  const type   = currentBundleType;
+  const box    = document.getElementById('sellMbStatus');
+  if(!lineId){box.style.display='none';return}
+  const line = getLines().find(l=>l.id===lineId);
+  if(!line){box.style.display='none';return}
+  const totalMb = type==='week' ? (line.mbWeek||0) : (line.mbMonth||0);
+  const sellMb  = parseFloat(document.getElementById('sellMbAmount').value)||0;
+  const leftMb  = Math.max(0, totalMb - sellMb);
+  const pct     = totalMb > 0 ? Math.min(100,(leftMb/totalMb)*100) : 0;
+  const col     = pct>50?'var(--accent)':pct>20?'var(--warning)':'var(--danger)';
+  box.style.display='block';
+  document.getElementById('sellLineMbLeft').textContent = fmtMB(leftMb)+' itabaki';
+  document.getElementById('sellLineMbLeft').style.color = col;
+  document.getElementById('sellLineMbBar').style.width  = pct+'%';
+  document.getElementById('sellLineMbBar').style.background = col;
+  document.getElementById('sellLineMbTotal').textContent = `Jumla ya ${type==='week'?'Wiki':'Mwezi'}: ${fmtMB(totalMb)}`;
+}
+
+function updateSellSlotInfo(){
   const lineId=document.getElementById('sellLine').value;
-  const cost=parseFloat(document.getElementById('sellCost').value);
-  const amount=parseFloat(document.getElementById('sellAmount').value);
-  const mb=document.getElementById('sellMb').value.trim();
-  const buyer=document.getElementById('sellBuyerPhone').value.trim();
-  const type=currentBundleType;
-  if(!lineId)return showToast('Chagua laini','error');
-  if(!cost||cost<0)return showToast('Ingiza bei ya kununua (gharama)','error');
-  if(!amount||amount<=0)return showToast('Ingiza bei ya kuuza (mapato)','error');
-  if(amount<cost&&!confirm(`Bei ya kuuza (${fmt(amount)}) ni chini ya gharama (${fmt(cost)}). Unataka kuendelea?`))return;
-  const lines=getLines(),idx=lines.findIndex(l=>l.id===lineId);if(idx<0)return;
-  const line=lines[idx],slots=getLineSlots(lineId);
-  if(type==='week'&&slots.weekUsed>=MAX_WEEK)return showToast('⚠️ Slots za Wiki zimekwisha leo!','warning');
-  if(type==='month'&&slots.monthUsed>=MAX_MONTH)return showToast('⚠️ Slots za Mwezi zimekwisha leo!','warning');
-  if(line.balance<cost)return showToast(`❌ Salio halitatoshi! Lipo: ${fmt(line.balance)}`,'error');
-  lines[idx].balance-=cost;saveLines(lines);
-  const profit=amount-cost;
-  const gbLabel = mb || (type==='week'?'Wiki':'Mwezi');
-  const sales=getSales();
-  sales.push({id:uid(),lineId,lineName:line.name,linePhone:line.phone,type,costPrice:cost,sellingPrice:amount,profit,mb:mb||null,buyerPhone:buyer||null,date:new Date().toISOString()});
+  const box=document.getElementById('sellSlotInfo');
+  if(!lineId){box.style.display='none';document.getElementById('sellMbStatus').style.display='none';return}
+  const line=getLines().find(l=>l.id===lineId);
+  if(!line){box.style.display='none';return}
+  const slots=getLineSlots(lineId);
+  const wLeft=MAX_WEEK-slots.weekUsed,mLeft=MAX_MONTH-slots.monthUsed;
+  box.style.display='block';
+  box.innerHTML=`
+    <div class="sib-row"><span class="sib-label">Slots za Wiki zilizobaki</span><span class="sib-val ${wLeft===0?'full':'ok'}">${wLeft}/${MAX_WEEK}</span></div>
+    <div class="sib-row"><span class="sib-label">Slots za Mwezi zilizobaki</span><span class="sib-val ${mLeft===0?'full':'ok'}">${mLeft}/${MAX_MONTH}</span></div>
+    <div class="sib-row"><span class="sib-label">MB za Wiki</span><span class="sib-val">${fmtMB(line.mbWeek||0)}</span></div>
+    <div class="sib-row"><span class="sib-label">MB za Mwezi</span><span class="sib-val">${fmtMB(line.mbMonth||0)}</span></div>`;
+  buildSellGbShortcuts();
+  updateSellMbStatus();
+}
+
+function sellBundle(){
+  const lineId  = document.getElementById('sellLine').value;
+  const sellMb  = parseFloat(document.getElementById('sellMbAmount').value)||0;
+  const amount  = parseFloat(document.getElementById('sellAmount').value);
+  const buyer   = document.getElementById('sellBuyerPhone').value.trim();
+  const type    = currentBundleType;
+  if(!lineId)  return showToast('Chagua laini','error');
+  if(!sellMb)  return showToast('Ingiza MB unazouza','error');
+  if(!amount||amount<=0) return showToast('Ingiza bei ya kuuza','error');
+  const lines = getLines();
+  const idx   = lines.findIndex(l=>l.id===lineId);
+  if(idx<0) return;
+  const line  = lines[idx];
+  const slots = getLineSlots(lineId);
+  if(type==='week'  && slots.weekUsed >=MAX_WEEK)  return showToast('⚠️ Slots za Wiki zimekwisha leo!','warning');
+  if(type==='month' && slots.monthUsed>=MAX_MONTH) return showToast('⚠️ Slots za Mwezi zimekwisha leo!','warning');
+  // MB check
+  const availMb = type==='week' ? (line.mbWeek||0) : (line.mbMonth||0);
+  if(sellMb > availMb) return showToast(`❌ MB haitoshi! Zilizopo: ${fmtMB(availMb)}`,'error');
+  // Compute cost from MB ratio
+  const totalBandoMb  = type==='week' ? 6556 : 13112;
+  const bandoCost     = type==='week' ? 5000 : 10000;
+  const costShare     = Math.round((sellMb / totalBandoMb) * bandoCost);
+  const profit        = amount - costShare;
+  const mbLabel       = fmtMB(sellMb);
+  // Deduct MB
+  if(type==='week')  lines[idx].mbWeek  = Math.max(0,(line.mbWeek||0)  - sellMb);
+  else               lines[idx].mbMonth = Math.max(0,(line.mbMonth||0) - sellMb);
+  saveLines(lines);
+  // Save sale
+  const sales = getSales();
+  sales.push({
+    id:uid(), lineId, lineName:line.name, linePhone:line.phone,
+    type, costPrice:costShare, sellingPrice:amount, profit,
+    mb:mbLabel, sellMb, buyerPhone:buyer||null,
+    date:new Date().toISOString()
+  });
   saveSales(sales);
   updateLineSlots(lineId,type);
-  document.getElementById('sellCost').value='';
+  // Clear form
+  document.getElementById('sellMbAmount').value='';
   document.getElementById('sellAmount').value='';
-  document.getElementById('sellMb').value='';
   document.getElementById('sellBuyerPhone').value='';
-  document.getElementById('profitPreview').style.display='none';
-  showToast(`✓ Bando imerekodiwa — Faida: ${fmt(profit)}`,'success');
-  // Tuma SMS kama nambari ya mnunuzi imewekwa na toggle imewashwa
-  const smsOn = document.getElementById('smsToggle')?.checked !== false;
+  document.getElementById('sellMbStatus').style.display='none';
+  showToast(`✓ ${mbLabel} imerekodiwa — Bei: ${fmt(amount)}`,'success');
+  // SMS
+  const smsOn = document.getElementById('smsToggle')?.checked!==false;
   if(buyer && smsOn){
-    const smsMsg = buildSmsMessage(gbLabel, amount);
+    const smsMsg = buildSmsMessage(mbLabel, amount);
     sendNextSMS(buyer, smsMsg);
   }
   renderAll();updateSellSlotInfo();renderTodaySales();
@@ -1263,8 +1647,28 @@ function buildLineCard(line,showActions){
   const isFull=wUsed>=MAX_WEEK&&mUsed>=MAX_MONTH;
   const wb=[0,1].map(i=>`<div class="slot-bar${i<wUsed?(wUsed>=MAX_WEEK?' used full':' used'):''}"></div>`).join('');
   const mb=[0,1].map(i=>`<div class="slot-bar${i<mUsed?(mUsed>=MAX_MONTH?' used full':' used'):''}"></div>`).join('');
+  // MB status
+  const mbWeek  = line.mbWeek  || 0;
+  const mbMonth = line.mbMonth || 0;
+  const totalMb = mbWeek + mbMonth;
+  const mbPct   = totalMb > 0 ? Math.min(100, (totalMb / (mbWeek + mbMonth + 1)) * 100) : 0;
+  const mbColor = totalMb > 5120 ? 'ok' : totalMb > 1024 ? 'mid' : 'low';
+  const mbBar = totalMb > 0 ? `
+    <div class="mb-bar-wrap">
+      <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:.25rem">
+        <span style="color:var(--text2)">MB Zilizobaki</span>
+        <span style="font-weight:700;color:${mbColor==='ok'?'var(--accent)':mbColor==='mid'?'var(--warning)':'var(--danger)'}">${fmtMB(totalMb)}</span>
+      </div>
+      <div style="display:flex;gap:.35rem;font-size:.7rem;color:var(--text3)">
+        ${mbWeek>0?`<span>Wiki: ${fmtMB(mbWeek)}</span>`:''}
+        ${mbWeek>0&&mbMonth>0?'<span>·</span>':''}
+        ${mbMonth>0?`<span>Mwezi: ${fmtMB(mbMonth)}</span>`:''}
+      </div>
+    </div>` : `<div style="font-size:.75rem;color:var(--text3);margin-bottom:.5rem">Hakuna MB — ongeza bando</div>`;
+
   const actions=showActions?`<div class="line-actions" style="margin-top:.85rem">
-    <button class="btn btn-ghost btn-sm" onclick="editLine('${line.id}')">✏️ Hariri</button>
+    <button class="btn btn-ghost btn-sm" onclick="editLine('${line.id}')">✏️ Hariri/Ongeza MB</button>
+    <button class="btn btn-ghost btn-sm" onclick="resetLineMb('${line.id}')" style="border-color:var(--warning);color:var(--warning)">🔄 Reset MB</button>
     <button class="btn btn-danger btn-sm" onclick="deleteLine('${line.id}')">🗑 Futa</button>
   </div>`:'';
   return`<div class="line-card${isFull?' full':''}">
@@ -1272,8 +1676,8 @@ function buildLineCard(line,showActions){
       <div><div class="line-card-name">${line.name}</div><div class="line-card-phone">${line.phone}</div></div>
       ${isFull?'<span class="full-badge">FULL</span>':''}
     </div>
-    <div class="line-balance">${fmt(line.balance)}<span>salio</span></div>
-    <div class="slots-row">
+    ${mbBar}
+    <div class="slots-row" style="margin-top:.5rem">
       <div class="slot-pill"><div class="slot-pill-label">Wiki</div><div class="slot-pill-val ${wUsed>=MAX_WEEK?'full':'ok'}">${wUsed}/${MAX_WEEK}</div><div class="slot-bars">${wb}</div></div>
       <div class="slot-pill"><div class="slot-pill-label">Mwezi</div><div class="slot-pill-val ${mUsed>=MAX_MONTH?'full':'ok'}">${mUsed}/${MAX_MONTH}</div><div class="slot-bars">${mb}</div></div>
     </div>
@@ -1282,6 +1686,15 @@ function buildLineCard(line,showActions){
 }
 
 // ---- DASHBOARD ----
+function renderDashboardLocked(){
+  const lines = getLines();
+  const el    = document.getElementById('dashboardLinesLocked');
+  if(!el) return;
+  el.innerHTML = lines.length
+    ? lines.map(l=>buildLineCard(l,false)).join('')
+    : '<div class="empty-state">Bado haujasajili laini. Nenda kwenye "Laini" kuanza.</div>';
+}
+
 function renderDashboard(){
   const lines=getLines(),ts=getTodaySales();
   const totalBal=lines.reduce((s,l)=>s+(l.balance||0),0);
@@ -1289,15 +1702,23 @@ function renderDashboard(){
   const totalCost=ts.reduce((s,t)=>s+(t.costPrice??0),0);
   const totalProfit=ts.reduce((s,t)=>s+(t.profit??((t.sellingPrice??t.amount??0)-(t.costPrice??0))),0);
   const fullLines=lines.filter(l=>{const sl=getLineSlots(l.id);return sl.weekUsed>=MAX_WEEK&&sl.monthUsed>=MAX_MONTH});
+  const totalMbWeek=lines.reduce((s,l)=>s+(l.mbWeek||0),0);
+  const totalMbMonth=lines.reduce((s,l)=>s+(l.mbMonth||0),0);
+  const H='••••';
   document.getElementById('statTotalBalance').textContent=fmt(totalBal);
   document.getElementById('statTodaySales').textContent=fmt(totalRev);
   document.getElementById('statTodayCount').textContent=ts.length+' mauzo';
-  document.getElementById('statTodayProfit').textContent=fmt(totalProfit);
-  document.getElementById('statTodayCost').textContent='Gharama: '+fmt(totalCost);
+  document.getElementById('statTodayProfit').textContent=profitVisible?fmt(totalProfit):H;
+  document.getElementById('statTodayCost').textContent=profitVisible?'Gharama: '+fmt(totalCost):'Gharama: ••••';
   document.getElementById('statLineCount').textContent=lines.length;
   document.getElementById('statFullLines').textContent=fullLines.length;
+  const ap=document.getElementById('statAllTimeProfit');
+  const ar=document.getElementById('statAllTimeReinvest');
+  if(ap){ap.textContent=fmtMB(totalMbWeek+totalMbMonth);ap.style.fontSize='1.1rem';}
+  if(ar) ar.textContent=`Wiki: ${fmtMB(totalMbWeek)} · Mwezi: ${fmtMB(totalMbMonth)}`;
   const grid=document.getElementById('dashboardLines');
-  grid.innerHTML=lines.length?lines.map(l=>buildLineCard(l,false)).join(''):'<div class="empty-state">Bado haujasajili laini. Nenda kwenye "Laini" kuanza.</div>';
+  if(grid) grid.innerHTML=lines.length?lines.map(l=>buildLineCard(l,false)).join(''):'<div class="empty-state">Bado haujasajili laini. Nenda kwenye "Laini" kuanza.</div>';
+  renderDashboardLocked();
   renderCycleStats();
 }
 
