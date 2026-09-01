@@ -585,6 +585,8 @@ canvas{display:block;width:100%!important}
             <select id="loanGB" onchange="onLoanGBChange()">
               <option value="">-- Chagua GB --</option>
               <optgroup label="Wiki (2 wiki)">
+                <option value="wiki_1">GB1 — TSh 1,500</option>
+                <option value="wiki_2">GB2 — TSh 2,500</option>
                 <option value="wiki_3">GB3 — TSh 3,500</option>
                 <option value="wiki_4">GB4 — TSh 4,500</option>
                 <option value="wiki_5">GB5 — TSh 5,500</option>
@@ -1502,7 +1504,7 @@ function buildSellGbShortcuts(){
   const box = document.getElementById('sellGbShortcuts');
   if(!box) return;
   const opts = type==='week'
-    ? [{gb:3,mb:3072},{gb:4,mb:4096},{gb:5,mb:5120},{gb:6,mb:6144},{gb:7,mb:7168},{gb:8,mb:8192},{gb:9,mb:9216}]
+    ? [{gb:1,mb:1024},{gb:2,mb:2048},{gb:3,mb:3072},{gb:4,mb:4096},{gb:5,mb:5120},{gb:6,mb:6144},{gb:7,mb:7168},{gb:8,mb:8192},{gb:9,mb:9216}]
     : [{gb:10,mb:10240},{gb:11,mb:11264},{gb:12,mb:12288},{gb:13,mb:13312},{gb:14,mb:14336},{gb:15,mb:15360}];
   box.innerHTML = opts.map(o=>{
     const can = o.mb <= availMb;
@@ -1515,7 +1517,14 @@ function buildSellGbShortcuts(){
 
 function selectSellGb(gb, mb, type){
   document.getElementById('sellMbAmount').value = mb;
-  const price = type==='week' ? gb*1000+500 : gb*1000;
+  let price;
+  if(type==='week'){
+    if(gb===1) price = 1500;
+    else if(gb===2) price = 2500;
+    else price = gb*1000+500;
+  } else {
+    price = gb*1000;
+  }
   document.getElementById('sellAmount').value = price;
   updateProfitPreview();
 }
@@ -2136,7 +2145,17 @@ let calcSelectedGB=null;
 function fmtMB(mb){return mb>=1024?(mb/1024).toFixed(2)+' GB':mb+' MB'}
 
 function calcWikiOptions(){
-  const o=[];for(let gb=3;gb<=9;gb++)o.push({gb,mb:gb*1024,price:gb*1000+500});return o;
+  return [
+    {gb:1,mb:1024,price:1500},
+    {gb:2,mb:2048,price:2500},
+    {gb:3,mb:3072,price:3500},
+    {gb:4,mb:4096,price:4500},
+    {gb:5,mb:5120,price:5500},
+    {gb:6,mb:6144,price:6500},
+    {gb:7,mb:7168,price:7500},
+    {gb:8,mb:8192,price:8500},
+    {gb:9,mb:9216,price:9500},
+  ];
 }
 function calcMonthOptions(maxMB){
   const o=[];let gb=10;
@@ -2145,8 +2164,14 @@ function calcMonthOptions(maxMB){
 }
 function calcPriceForMB(type,mb){
   const gb=mb/1024;
-  if(type==='week'){if(gb<3||gb>9)return null;return Math.round(gb)*1000+500}
-  if(gb<10)return null;return Math.round(gb)*1000;
+  if(type==='week'){
+    if(gb<1||gb>9) return null;
+    if(gb===1) return 1500;
+    if(gb===2) return 2500;
+    return Math.round(gb)*1000+500;
+  }
+  if(gb<10) return null;
+  return Math.round(gb)*1000;
 }
 
 function onCalcTypeChange(){
@@ -2272,7 +2297,11 @@ const saveLoans    = d  => { _cache.loans = d; saveDocToFirestore('loans', d); }
 // Load loans into cache on init (patch initFirebase to include loans)
 // GB price lookup
 function loanPriceForGB(type, gb){
-  if(type==='wiki')  return gb*1000+500;
+  if(type==='wiki'){
+    if(gb===1) return 1500;
+    if(gb===2) return 2500;
+    return gb*1000+500;
+  }
   if(type==='mwezi') return gb*1000;
   return 0;
 }
