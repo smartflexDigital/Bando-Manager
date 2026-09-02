@@ -500,7 +500,27 @@ canvas{display:block;width:100%!important}
 
     <!-- REPORTS -->
     <section class="page" id="page-reports">
-      <div class="page-header"><h1>Ripoti</h1><p class="page-sub">Uchambuzi wa faida na mwenendo wa biashara</p></div>
+      <div class="page-header">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><h1>Ripoti</h1><p class="page-sub">Uchambuzi wa faida na mwenendo wa biashara</p></div>
+          <button class="btn btn-ghost btn-sm" onclick="toggleProfitView()" id="rptEyeBtn" style="gap:.4rem;font-size:.85rem">
+            👁 <span id="rptEyeLabel">Ona Ripoti</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- LOCKED STATE -->
+      <div id="rptLocked">
+        <div style="text-align:center;padding:3rem 1rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-r)">
+          <div style="font-size:3rem;margin-bottom:1rem">🔒</div>
+          <div style="font-size:1.1rem;font-weight:700;margin-bottom:.5rem">Ripoti imefichwa</div>
+          <div style="color:var(--text2);font-size:.88rem;margin-bottom:1.5rem">Faida, mapato, na gharama zinahitaji PIN kuonekana</div>
+          <button class="btn btn-primary" onclick="toggleProfitView()">👁 Ingiza PIN Kuona Ripoti</button>
+        </div>
+      </div>
+
+      <!-- UNLOCKED STATE -->
+      <div id="rptUnlocked" style="display:none">
 
       <!-- FILTERS -->
       <div class="report-filters">
@@ -561,6 +581,8 @@ canvas{display:block;width:100%!important}
       <!-- SALES LIST WITH DATES -->
       <div class="section-title" style="margin-top:1.5rem">📋 Rekodi za Mauzo — na Tarehe</div>
       <div id="reportSalesList"></div>
+
+      </div><!-- /rptUnlocked -->
     </section>
 
     <!-- MIKOPO -->
@@ -629,7 +651,7 @@ canvas{display:block;width:100%!important}
         </div>
         <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:1rem">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-            <label style="text-transform:none;font-size:.88rem;font-weight:600;color:var(--text);letter-spacing:0;margin:0">📱 Mkumbushe kwa SMS akichelewa</label>
+            <label style="text-transform:none;font-size:.88rem;font-weight:600;color:var(--text);letter-spacing:0;margin:0">📱 Mkumbushe kwa SMS</label>
             <div style="display:flex;align-items:center;gap:.5rem">
               <span style="font-size:.78rem;color:var(--text2)" id="reminderToggleLabel">Imezimwa</span>
               <div class="toggle-switch" id="reminderToggle" onclick="toggleReminder()" style="width:40px;height:22px;background:var(--border);border-radius:11px;cursor:pointer;position:relative;transition:background .2s">
@@ -638,13 +660,9 @@ canvas{display:block;width:100%!important}
             </div>
           </div>
           <div id="reminderDaysRow" style="display:none">
-            <label style="font-size:.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem;display:block">Mkumbushe baada ya siku ngapi bila kulipa</label>
-            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-              <button type="button" class="reminder-day-btn active" data-days="1" onclick="selectReminderDays(1)">Siku 1</button>
-              <button type="button" class="reminder-day-btn" data-days="2" onclick="selectReminderDays(2)">Siku 2</button>
-              <button type="button" class="reminder-day-btn" data-days="3" onclick="selectReminderDays(3)">Siku 3</button>
-              <button type="button" class="reminder-day-btn" data-days="7" onclick="selectReminderDays(7)">Siku 7</button>
-            </div>
+            <label style="font-size:.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem;display:block">📅 Tarehe ya Mwisho ya Kulipa</label>
+            <input type="date" id="loanDueDate" style="width:100%" oninput="onDueDateChange()"/>
+            <div style="font-size:.75rem;color:var(--text3);margin-top:.35rem" id="dueDatePreview"></div>
           </div>
         </div>
         <button class="btn btn-primary btn-full" onclick="addLoan()">🤝 Hifadhi Mkopo</button>
@@ -1497,7 +1515,7 @@ function profitPinPress(k){
 
 function showProfitInfo(){
   profitVisible=true;
-  // Dashboard — onyesha takwimu zote
+  // Dashboard
   const locked   = document.getElementById('dashLocked');
   const unlocked = document.getElementById('dashUnlocked');
   const eyeBtn   = document.getElementById('dashEyeBtn');
@@ -1506,6 +1524,15 @@ function showProfitInfo(){
   if(unlocked) unlocked.style.display='block';
   if(eyeBtn)   eyeBtn.style.color='var(--accent)';
   if(eyeLabel) eyeLabel.textContent='Ficha Takwimu';
+  // Ripoti
+  const rptLocked   = document.getElementById('rptLocked');
+  const rptUnlocked = document.getElementById('rptUnlocked');
+  const rptEyeBtn   = document.getElementById('rptEyeBtn');
+  const rptEyeLabel = document.getElementById('rptEyeLabel');
+  if(rptLocked)   rptLocked.style.display='none';
+  if(rptUnlocked) rptUnlocked.style.display='block';
+  if(rptEyeBtn)   rptEyeBtn.style.color='var(--accent)';
+  if(rptEyeLabel) rptEyeLabel.textContent='Ficha Ripoti';
   // Sell page profit
   const h=document.getElementById('profitHidden');
   const v=document.getElementById('profitVisible');
@@ -1513,16 +1540,16 @@ function showProfitInfo(){
   if(h) h.style.display='none';
   if(v) v.style.display='block';
   if(btn){btn.textContent='🙈 Ficha';btn.style.color='var(--accent)'}
-  // Auto-hide after 30 seconds
   clearTimeout(profitHideTimer);
   profitHideTimer=setTimeout(hideProfitInfo, 30000);
   renderDashboard();
+  renderReports();
   renderCycleStats();
 }
 
 function hideProfitInfo(){
   profitVisible=false;
-  // Dashboard — ficha takwimu
+  // Dashboard
   const locked   = document.getElementById('dashLocked');
   const unlocked = document.getElementById('dashUnlocked');
   const eyeBtn   = document.getElementById('dashEyeBtn');
@@ -1531,6 +1558,15 @@ function hideProfitInfo(){
   if(unlocked) unlocked.style.display='none';
   if(eyeBtn)   eyeBtn.style.color='';
   if(eyeLabel) eyeLabel.textContent='Ona Takwimu';
+  // Ripoti
+  const rptLocked   = document.getElementById('rptLocked');
+  const rptUnlocked = document.getElementById('rptUnlocked');
+  const rptEyeBtn   = document.getElementById('rptEyeBtn');
+  const rptEyeLabel = document.getElementById('rptEyeLabel');
+  if(rptLocked)   rptLocked.style.display='block';
+  if(rptUnlocked) rptUnlocked.style.display='none';
+  if(rptEyeBtn)   rptEyeBtn.style.color='';
+  if(rptEyeLabel) rptEyeLabel.textContent='Ona Ripoti';
   // Sell page profit
   const h=document.getElementById('profitHidden');
   const v=document.getElementById('profitVisible');
@@ -1539,7 +1575,6 @@ function hideProfitInfo(){
   if(v) v.style.display='none';
   if(btn){btn.textContent='👁 Ona';btn.style.color=''}
   clearTimeout(profitHideTimer);
-  // Show line cards without stats even when locked
   renderDashboardLocked();
 }
 
@@ -2473,12 +2508,24 @@ function toggleReminder(){
   }
 }
 
-function selectReminderDays(days){
-  reminderDays = days;
-  document.querySelectorAll('.reminder-day-btn').forEach(b=>{
-    b.classList.toggle('active', parseInt(b.dataset.days)===days);
-  });
+function onDueDateChange(){
+  const val = document.getElementById('loanDueDate').value;
+  const preview = document.getElementById('dueDatePreview');
+  if(!val){ if(preview) preview.textContent=''; return; }
+  const date = new Date(val+'T12:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff  = Math.ceil((date - today) / (1000*60*60*24));
+  const label = date.toLocaleDateString('sw-TZ',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  if(preview){
+    preview.textContent = diff > 0
+      ? `SMS itatumwa siku hiyo — siku ${diff} zinazoibaki`
+      : diff === 0 ? 'Leo ndiyo siku ya mwisho'
+      : `⚠️ Tarehe hii imepita (siku ${Math.abs(diff)} zilizopita)`;
+    preview.style.color = diff > 0 ? 'var(--text2)' : diff === 0 ? 'var(--warning)' : 'var(--danger)';
+  }
 }
+
+function selectReminderDays(days){ /* legacy — hatuiitumii tena */ }
 
 function onLoanGBChange(){
   const val = document.getElementById('loanGB').value;
@@ -2500,7 +2547,8 @@ function addLoan(){
 
   if(!name)   return showToast('Ingiza jina la mkopaji','error');
   if(!amount||amount<=0) return showToast('Ingiza kiasi sahihi','error');
-  if(reminderEnabled && !phone) return showToast('Ingiza nambari ya simu ili kuweza kutuma ukumbusho','error');
+  const dueDate = reminderEnabled ? (document.getElementById('loanDueDate').value||null) : null;
+  if(reminderEnabled && !dueDate) return showToast('Chagua tarehe ya mwisho ya kulipa','error');
 
   let gbLabel='', loanType='';
   if(gbVal && gbVal!=='custom'){
@@ -2514,7 +2562,8 @@ function addLoan(){
     id: uid(), name, smsName, phone, gbLabel, loanType, amount,
     note: note||'', paid: false,
     remind: reminderEnabled,
-    remindDays: reminderEnabled ? reminderDays : null,
+    remindDays: null,
+    dueDate: dueDate,
     remindSent: false,
     dateBorrowed: new Date().toISOString(),
     datePaid: null
@@ -2522,7 +2571,10 @@ function addLoan(){
   saveLoans(loans);
 
   // Clear form
-  ['loanName','loanPhone','loanAmount','loanNote','loanSmsName'].forEach(id=>document.getElementById(id).value='');
+  ['loanName','loanPhone','loanAmount','loanNote','loanSmsName','loanDueDate'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  const dp=document.getElementById('dueDatePreview'); if(dp) dp.textContent='';
   document.getElementById('loanGB').value='';
   // Reset reminder toggle
   if(reminderEnabled){ toggleReminder(); }
@@ -2585,9 +2637,15 @@ function buildLoanCard(loan){
   const paidInfo = loan.paid && loan.datePaid
     ? `<span style="color:var(--success);font-size:.75rem">✅ Aliilipa ${fmtDateTime(loan.datePaid)}</span>` : '';
   const remindBadge = loan.remind
-    ? `<span style="font-size:.65rem;font-weight:700;padding:.15rem .45rem;border-radius:4px;margin-left:.35rem;background:${loan.remindSent?'rgba(34,197,94,.15)':'rgba(0,151,255,.15)'};color:${loan.remindSent?'var(--success)':'var(--accent2)'}">
-        ${loan.remindSent?'✅ Ukumbusho ulitumwa':'📱 Ukumbusho: Siku '+loan.remindDays}
-       </span>` : '';
+    ? (()=>{
+        const dueDateStr = loan.dueDate
+          ? new Date(loan.dueDate+'T12:00:00').toLocaleDateString('sw-TZ',{day:'2-digit',month:'short',year:'numeric'})
+          : '—';
+        return `<span style="font-size:.65rem;font-weight:700;padding:.15rem .45rem;border-radius:4px;margin-left:.35rem;background:${loan.remindSent?'rgba(34,197,94,.15)':'rgba(0,151,255,.15)'};color:${loan.remindSent?'var(--success)':'var(--accent2)'}">
+          ${loan.remindSent?'✅ Ukumbusho ulitumwa':'📅 Malipo: '+dueDateStr}
+        </span>`;
+      })()
+    : '';
 
   return `<div class="loan-card ${cls}">
     <div class="loan-card-header">
@@ -2702,13 +2760,15 @@ function savePhoneToLoan(){
 }
 
 function buildReminderMsg(loan){
-  const dueDate = new Date(loan.dateBorrowed);
-  dueDate.setDate(dueDate.getDate() + (loan.remindDays||1));
-  const dueDateStr = dueDate.toLocaleDateString('sw-TZ',{day:'2-digit',month:'long',year:'numeric'});
-  const gbInfo = loan.gbLabel
-    ? `${loan.gbLabel} (${fmt(loan.amount)})`
-    : fmt(loan.amount);
-  // Tumia smsName kama ipo, vinginevyo jina la kwanza, vinginevyo "Mteja"
+  let dueDateStr;
+  if(loan.dueDate){
+    dueDateStr = new Date(loan.dueDate+'T12:00:00').toLocaleDateString('sw-TZ',{day:'2-digit',month:'long',year:'numeric'});
+  } else {
+    const d = new Date(loan.dateBorrowed);
+    d.setDate(d.getDate()+(loan.remindDays||1));
+    dueDateStr = d.toLocaleDateString('sw-TZ',{day:'2-digit',month:'long',year:'numeric'});
+  }
+  const gbInfo = loan.gbLabel ? `${loan.gbLabel} (${fmt(loan.amount)})` : fmt(loan.amount);
   const salutation = loan.smsName || (loan.name ? loan.name.split(' ')[0] : 'Mteja');
   return `Habari ${salutation}, Tafadhali kumbuka kufanya malipo ya bando lako la ${gbInfo} kabla ya ${dueDateStr}. Ukihitaji msaada wa kufanya malipo, tupo tayari kukusaidia. Asante kwa kuchagua SMART BUNDLES. Contact - 0612626715`;
 }
@@ -2742,19 +2802,21 @@ async function sendManualReminder(id){
 
 async function checkLoanReminders(){
   const loans = getLoans();
+  const today = todayStr();
   let updated = false;
   for(const loan of loans){
     if(loan.paid || !loan.remind || !loan.phone || loan.remindSent) continue;
-    const days = daysAgo(loan.dateBorrowed);
-    if(days >= loan.remindDays){
+    // Angalia kama leo ni siku ya dueDate au imepita
+    const due = loan.dueDate || null;
+    if(!due) continue;
+    if(today >= due){
       const msg = buildReminderMsg(loan);
       let phone = loan.phone.replace(/\s+/g,'');
       if(phone.startsWith('0')) phone = '255'+phone.slice(1);
       if(phone.startsWith('+')) phone = phone.slice(1);
       try {
         const res = await fetch('https://nextsms-proxy.hanshannu9.workers.dev', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
+          method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({to: phone, text: msg})
         });
         const data = await res.json();
