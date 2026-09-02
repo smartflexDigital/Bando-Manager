@@ -819,6 +819,30 @@ canvas{display:block;width:100%!important}
 </div>
 
 <!-- Profit PIN Modal -->
+<!-- Send SMS with Due Date Modal -->
+<div class="modal-overlay" id="modalSendSms">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>📱 Tuma SMS ya Ukumbusho</h2>
+      <button class="modal-close" onclick="closeModal('modalSendSms')">✕</button>
+    </div>
+    <p style="color:var(--text2);font-size:.85rem;margin-bottom:1rem" id="smsModalName"></p>
+    <input type="hidden" id="smsModalLoanId"/>
+    <div class="form-group">
+      <label>📅 Tarehe ya Mwisho ya Kulipa</label>
+      <input type="date" id="smsModalDueDate" style="width:100%" oninput="onSmsModalDateChange()"/>
+      <div style="font-size:.75rem;color:var(--text3);margin-top:.35rem" id="smsModalDatePreview"></div>
+    </div>
+    <div style="background:var(--bg3);border-radius:8px;padding:.75rem;font-size:.8rem;color:var(--text2);margin-bottom:1rem;line-height:1.5" id="smsModalPreview">
+      Chagua tarehe kuona ujumbe...
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalSendSms')">Ghairi</button>
+      <button class="btn btn-primary" onclick="sendSmsFromModal()">📱 Tuma SMS</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalProfitPin">
   <div class="modal modal-sm">
     <div class="modal-header">
@@ -2668,7 +2692,7 @@ function buildLoanCard(loan){
         : `<button class="btn btn-ghost btn-sm" onclick="markLoanUnpaid('${loan.id}')">↩️ Hajakulipa</button>`}
       ${!loan.paid
         ? loan.phone
-          ? `<button class="btn btn-ghost btn-sm" onclick="sendManualReminder('${loan.id}')">📱 Mtumie SMS</button>`
+          ? `<button class="btn btn-ghost btn-sm" onclick="openSmsModal('${loan.id}')">📱 Mtumie SMS</button>`
           : `<button class="btn btn-ghost btn-sm" style="border-color:var(--warning);color:var(--warning)" onclick="addPhoneToLoan('${loan.id}')">➕ Ongeza Namba</button>`
         : ''}
       <button class="btn btn-danger btn-sm" onclick="deleteLoan('${loan.id}')">🗑 Futa</button>
@@ -2771,6 +2795,80 @@ function buildReminderMsg(loan){
   const gbInfo = loan.gbLabel ? `${loan.gbLabel} (${fmt(loan.amount)})` : fmt(loan.amount);
   const salutation = loan.smsName || (loan.name ? loan.name.split(' ')[0] : 'Mteja');
   return `Habari ${salutation}, Tafadhali kumbuka kufanya malipo ya bando lako la ${gbInfo} kabla ya ${dueDateStr}. Ukihitaji msaada wa kufanya malipo, tupo tayari kukusaidia. Asante kwa kuchagua SMART BUNDLES. Contact - 0612626715`;
+}
+
+function openSmsModal(id){
+  const loan = getLoans().find(l=>l.id===id);
+  if(!loan) return;
+  document.getElementById('smsModalLoanId').value = id;
+  document.getElementById('smsModalName').textContent =
+    `Mkopaji: ${loan.name} · ${fmt(loan.amount)}${loan.gbLabel?' ('+loan.gbLabel+')':''}`;
+  // Pre-fill na dueDate iliyohifadhiwa kama ipo
+  const dueDateInput = document.getElementById('smsModalDueDate');
+  dueDateInput.value = loan.dueDate || '';
+  document.getElementById('smsModalDatePreview').textContent = '';
+  document.getElementById('smsModalPreview').textContent = 'Chagua tarehe kuona ujumbe...';
+  if(loan.dueDate) onSmsModalDateChange();
+  openModal('modalSendSms');
+  setTimeout(()=>dueDateInput.focus(), 200);
+}
+
+function onSmsModalDateChange(){
+  const id    = document.getElementById('smsModalLoanId').value;
+  const val   = document.getElementById('smsModalDueDate').value;
+  const prev  = document.getElementById('smsModalDatePreview');
+  const msgPrev = document.getElementById('smsModalPreview');
+  if(!val){ prev.textContent=''; msgPrev.textContent='Chagua tarehe kuona ujumbe...'; return; }
+  const loan = getLoans().find(l=>l.id===id);
+  if(!loan) return;
+  // Preview ya tarehe
+  const date  = new Date(val+'T12:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff  = Math.ceil((date-today)/(1000*60*60*24));
+  const label = date.toLocaleDateString('sw-TZ',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  prev.textContent = diff>0 ? `${label} — siku ${diff} zinazoibaki`
+    : diff===0 ? `${label} — Leo ni siku ya mwisho`
+    : `⚠️ Tarehe hii imepita (siku ${Math.abs(diff)} zilizopita)`;
+  prev.style.color = diff>0?'var(--text2)':diff===0?'var(--warning)':'var(--danger)';
+  // Preview ya ujumbe
+  const tempLoan = {...loan, dueDate: val};
+  msgPrev.textContent = buildReminderMsg(tempLoan);
+}
+
+async function sendSmsFromModal(){
+  const id  = document.getElementById('smsModalLoanId').value;
+  const due = document.getElementById('smsModalDueDate').value;
+  if(!due) return showToast('Chagua tarehe ya mwisho kwanza','error');
+  const loans = getLoans();
+  const idx   = loans.findIndex(l=>l.id===id);
+  if(idx<0) return;
+  const loan = loans[idx];
+  if(!loan.phone) return showToast('Mkopaji hana nambari ya simu','error');
+  // Hifadhi dueDate kwenye loan record
+  loans[idx].dueDate = due;
+  // Jenga ujumbe na tarehe iliyochaguliwa
+  const tempLoan = {...loan, dueDate: due};
+  const msg = buildReminderMsg(tempLoan);
+  let phone = loan.phone.replace(/\s+/g,'');
+  if(phone.startsWith('0')) phone = '255'+phone.slice(1);
+  if(phone.startsWith('+')) phone = phone.slice(1);
+  closeModal('modalSendSms');
+  showToast('📱 Inatuma ujumbe...','');
+  try {
+    const res = await fetch('https://nextsms-proxy.hanshannu9.workers.dev',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({to:phone, text:msg})
+    });
+    const data = await res.json();
+    if(res.ok && !data.error){
+      loans[idx].remindSent = true;
+      saveLoans(loans);
+      showToast(`✅ SMS imetumwa kwa ${loan.name}!`,'success');
+      renderLoans();
+    } else {
+      showToast('⚠️ SMS haikutumwa — jaribu tena','warning');
+    }
+  } catch(e){ showToast('⚠️ Tatizo la mtandao','warning'); }
 }
 
 async function sendManualReminder(id){
