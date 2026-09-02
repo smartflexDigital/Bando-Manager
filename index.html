@@ -1302,7 +1302,10 @@ function getActiveBandos(lineId){
 }
 function bandoMbLeft(b){ return Math.max(0, b.totalMb-(b.usedMb||0)); }
 function lineMbAvailable(lineId,type){
-  return getActiveBandos(lineId).filter(b=>b.type===type).reduce((s,b)=>s+bandoMbLeft(b),0);
+  // line.mbWeek/mbMonth ndiyo chanzo halisi — inajumuisha MB zote (za zamani + za FIFO)
+  const line = getLines().find(l=>l.id===lineId);
+  if(!line) return 0;
+  return type==='week' ? (line.mbWeek||0) : (line.mbMonth||0);
 }
 
 let currentBandoType='week';
@@ -1367,11 +1370,21 @@ function buyBando(){
   updateBandoPreview();renderTransactions();renderAll();renderCycleStats();
 }
 
-// FIFO cost computation
+// FIFO cost computation — inajumuisha MB za zamani (kabla ya FIFO system)
 function computeFifoCost(lineId,type,sellMb){
   const bandos=getActiveBandos(lineId).filter(b=>b.type===type);
-  let remaining=sellMb,totalCost=0;
+  // Hesabu MB za FIFO zilizopo
+  const fifMbTotal = bandos.reduce((s,b)=>s+bandoMbLeft(b),0);
+  // MB zote halisi (line.mbWeek/mbMonth)
+  const line = getLines().find(l=>l.id===lineId);
+  const realMbTotal = line ? (type==='week'?(line.mbWeek||0):(line.mbMonth||0)) : 0;
+
+  if(sellMb > realMbTotal) return null; // MB hazitoshi kabisa
+
+  let remaining=sellMb, totalCost=0;
   const used=[];
+
+  // Kwanza toa kutoka FIFO bandos (zina gharama halisi)
   for(const b of bandos){
     if(remaining<=0) break;
     const avail=bandoMbLeft(b);
@@ -1380,7 +1393,15 @@ function computeFifoCost(lineId,type,sellMb){
     used.push({bando:b,mbUsed:take});
     remaining-=take;
   }
-  if(remaining>0.5) return null;
+
+  // MB zilizobaki (za zamani kabla ya FIFO) — tumia bei ya wastani
+  if(remaining>0.5){
+    // Bei ya wastani ya aina hii ya bando
+    const avgCostPerMb = type==='week' ? (5000/6556) : (10000/13112);
+    totalCost += remaining * avgCostPerMb;
+    remaining = 0;
+  }
+
   return{totalCost:Math.round(totalCost),used};
 }
 
