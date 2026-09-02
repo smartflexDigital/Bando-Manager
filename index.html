@@ -1599,18 +1599,17 @@ async function sendNextSMS(phone, message){
 
 // ---- SELL PAGE MB FUNCTIONS ----
 function buildSellGbShortcuts(){
-  const type = currentBundleType;
+  const type   = currentBundleType;
   const lineId = document.getElementById('sellLine').value;
-  const line = getLines().find(l=>l.id===lineId);
-  const availMb = line ? ((type==='week'?(line.mbWeek||0):(line.mbMonth||0))) : 99999;
-  const box = document.getElementById('sellGbShortcuts');
+  const availMb = lineId ? lineMbAvailable(lineId, type) : 99999;
+  const box    = document.getElementById('sellGbShortcuts');
   if(!box) return;
   const opts = type==='week'
     ? [{gb:0.5,mb:512},{gb:0.75,mb:768},{gb:1,mb:1024},{gb:2,mb:2048},{gb:3,mb:3072},{gb:4,mb:4096},{gb:5,mb:5120},{gb:6,mb:6144},{gb:7,mb:7168},{gb:8,mb:8192},{gb:9,mb:9216}]
     : [{gb:10,mb:10240},{gb:11,mb:11264},{gb:12,mb:12288},{gb:13,mb:13312},{gb:14,mb:14336},{gb:15,mb:15360}];
   box.innerHTML = opts.map(o=>{
     const can = o.mb <= availMb;
-    return `<button type="button" class="type-btn${!can?' disabled':''}${!can?' style="opacity:.4;pointer-events:none"':''}"
+    return `<button type="button" class="type-btn${!can?' style="opacity:.4;pointer-events:none"':''}"
       onclick="selectSellGb(${o.gb},${o.mb},'${type}')">
       GB${o.gb}
     </button>`;
@@ -1643,9 +1642,8 @@ function updateSellMbStatus(){
   const type   = currentBundleType;
   const box    = document.getElementById('sellMbStatus');
   if(!lineId){box.style.display='none';return}
-  const line = getLines().find(l=>l.id===lineId);
-  if(!line){box.style.display='none';return}
-  const totalMb = type==='week' ? (line.mbWeek||0) : (line.mbMonth||0);
+  // Tumia FIFO MB — sio line.mbWeek/mbMonth
+  const totalMb = lineMbAvailable(lineId, type);
   const sellMb  = parseFloat(document.getElementById('sellMbAmount').value)||0;
   const leftMb  = Math.max(0, totalMb - sellMb);
   const pct     = totalMb > 0 ? Math.min(100,(leftMb/totalMb)*100) : 0;
@@ -1655,7 +1653,8 @@ function updateSellMbStatus(){
   document.getElementById('sellLineMbLeft').style.color = col;
   document.getElementById('sellLineMbBar').style.width  = pct+'%';
   document.getElementById('sellLineMbBar').style.background = col;
-  document.getElementById('sellLineMbTotal').textContent = `Jumla ya ${type==='week'?'Wiki':'Mwezi'}: ${fmtMB(totalMb)}`;
+  document.getElementById('sellLineMbTotal').textContent =
+    `Jumla ya ${type==='week'?'Wiki':'Mwezi'} (FIFO): ${fmtMB(totalMb)}`;
 }
 
 function updateSellSlotInfo(){
@@ -1672,8 +1671,8 @@ function updateSellSlotInfo(){
   box.innerHTML=`
     <div class="sib-row"><span class="sib-label">Slots za Wiki zilizobaki</span><span class="sib-val ${wLeft===0?'full':'ok'}">${wLeft}/${MAX_WEEK}</span></div>
     <div class="sib-row"><span class="sib-label">Slots za Mwezi zilizobaki</span><span class="sib-val ${mLeft===0?'full':'ok'}">${mLeft}/${MAX_MONTH}</span></div>
-    <div class="sib-row"><span class="sib-label">MB za Wiki (FIFO)</span><span class="sib-val ${wMb>0?'ok':'full'}">${fmtMB(wMb)}</span></div>
-    <div class="sib-row"><span class="sib-label">MB za Mwezi (FIFO)</span><span class="sib-val ${mMb>0?'ok':'full'}">${fmtMB(mMb)}</span></div>`;
+    <div class="sib-row"><span class="sib-label">📶 MB za Wiki (FIFO)</span><span class="sib-val ${wMb>0?'ok':'full'}">${fmtMB(wMb)}</span></div>
+    <div class="sib-row"><span class="sib-label">📶 MB za Mwezi (FIFO)</span><span class="sib-val ${mMb>0?'ok':'full'}">${fmtMB(mMb)}</span></div>`;
   buildSellGbShortcuts();
   updateSellMbStatus();
 }
