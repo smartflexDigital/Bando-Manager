@@ -269,6 +269,9 @@ canvas{display:block;width:100%!important}
 
       <!-- LOCKED OVERLAY -->
       <div id="dashLocked" style="display:block">
+        <!-- MB WARNING — inaonekana hata bila PIN -->
+        <div id="mbWarningAlert" style="display:none;margin-bottom:1rem"></div>
+
         <div style="text-align:center;padding:3rem 1rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-r);margin-bottom:1.5rem">
           <div style="font-size:3rem;margin-bottom:1rem">🔒</div>
           <div style="font-size:1.1rem;font-weight:700;margin-bottom:.5rem">Takwimu zimefichwa</div>
@@ -281,6 +284,8 @@ canvas{display:block;width:100%!important}
 
       <!-- UNLOCKED CONTENT -->
       <div id="dashUnlocked" style="display:none">
+        <!-- MB WARNING — inaonekana hata ukiwa umefungua -->
+        <div id="mbWarningAlertUnlocked" style="display:none;margin-bottom:1rem"></div>
         <div class="stat-grid">
           <div class="stat-card accent"><div class="stat-label">Jumla ya Salio</div><div class="stat-value" id="statTotalBalance">TSh 0</div><div class="stat-note">Laini zote</div></div>
           <div class="stat-card"><div class="stat-label">Mapato Leo</div><div class="stat-value" id="statTodaySales">TSh 0</div><div class="stat-note" id="statTodayCount">0 mauzo</div></div>
@@ -738,7 +743,14 @@ canvas{display:block;width:100%!important}
       </div>
 
       <!-- ORODHA — HAWAJALIPA -->
-      <div class="section-title" style="margin-top:1.5rem">⏳ Hawajalipa</div>
+      <div class="section-title" style="margin-top:1.5rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+          <span>⏳ Hawajalipa</span>
+          <input type="text" id="loansSearch" placeholder="🔍 Tafuta jina au namba..."
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.4rem .75rem;font-size:.82rem;color:var(--text);font-family:var(--font);width:200px"
+            oninput="renderLoans()"/>
+        </div>
+      </div>
       <div id="loansUnpaidList"></div>
 
       <!-- ORODHA — WALIOKWISHA LIPA -->
@@ -799,6 +811,23 @@ canvas{display:block;width:100%!important}
         <div id="profitPinMsg" style="font-size:.83rem;margin-bottom:.75rem;display:none"></div>
         <button class="btn btn-primary btn-full" onclick="changeProfitPin()">👁 Hifadhi PIN ya Faida</button>
         <p style="font-size:.75rem;color:var(--text3);margin-top:.5rem">PIN ya default ni: 0000</p>
+      </div>
+
+      <!-- RIPOTI YA KILA SIKU -->
+      <div class="form-card" style="max-width:420px;margin-top:1rem">
+        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:1rem">📱 Ripoti ya Kila Siku (Saa 23:30)</div>
+        <p style="font-size:.83rem;color:var(--text2);margin-bottom:1rem">Ingiza namba yako — utapata ujumbe wa siri wa faida ya siku hiyo kila usiku saa 23:30.</p>
+        <div class="form-group">
+          <label>Namba Yako (Boss)</label>
+          <input type="text" id="bossPhoneInput" placeholder="e.g. 0712345678"
+            value="" oninput="saveBossPhone()"/>
+        </div>
+        <div id="bossPhoneStatus" style="font-size:.8rem;margin-top:.25rem"></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:.75rem;font-size:.78rem;color:var(--text2);margin-top:.75rem">
+          <strong>Ujumbe utakaoonekana:</strong><br>
+          <code style="color:var(--accent);font-size:.75rem">[SYS::2026-09-05] PKT_RECV:4 | FLUX:128000 | NET:45500 | STATUS:GREEN | EOF</code><br>
+          <span style="color:var(--text3);margin-top:.3rem;display:block">PKT_RECV = mauzo, FLUX = mapato (TSh), NET = faida (TSh)</span>
+        </div>
       </div>
         <div class="slot-info-box">
           <div class="sib-row"><span class="sib-label">Toleo</span><span class="sib-val">BandoManager v2.0</span></div>
@@ -881,6 +910,17 @@ canvas{display:block;width:100%!important}
 </div>
 
 <!-- Profit PIN Modal -->
+<!-- Customer History Modal -->
+<div class="modal-overlay" id="modalCustomerHistory">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📱 Historia ya Mteja</h2>
+      <button class="modal-close" onclick="closeModal('modalCustomerHistory')">✕</button>
+    </div>
+    <div id="customerHistoryContent"></div>
+  </div>
+</div>
+
 <!-- Send SMS with Due Date Modal -->
 <!-- Sell SMS Modal -->
 <div class="modal-overlay" id="modalSellSms">
@@ -1115,6 +1155,18 @@ function showPinMsg(msg, ok){
   el.style.color=ok?'var(--success)':'var(--danger)';
   el.textContent=msg;
   if(ok) setTimeout(()=>el.style.display='none', 3000);
+}
+
+function saveBossPhone(){
+  const val = document.getElementById('bossPhoneInput').value.trim();
+  const st  = document.getElementById('bossPhoneStatus');
+  if(val){
+    localStorage.setItem('bm_boss_phone', val);
+    if(st){ st.textContent='✅ Namba imehifadhiwa — ripoti itatumwa saa 23:30'; st.style.color='var(--success)'; }
+  } else {
+    localStorage.removeItem('bm_boss_phone');
+    if(st){ st.textContent='Ripoti imezimwa — hakuna namba'; st.style.color='var(--text3)'; }
+  }
 }
 
 function changeProfitPin(){
@@ -1958,9 +2010,14 @@ function renderTodaySales(){
   if(!list.length){el.innerHTML='<div class="empty-state">Hakuna mauzo leo bado.</div>';return}
   el.innerHTML=list.map(s=>{
     const rev=s.sellingPrice??s.amount??0,cost=s.costPrice??0,profit=s.profit??(rev-cost);
+    const buyerTag = s.buyerPhone
+      ? `<span onclick="showCustomerHistory('${s.buyerPhone}')"
+          style="color:var(--accent);cursor:pointer;text-decoration:underline;font-size:.78rem"
+          title="Bonyeza kuona historia ya mteja">📱 ${s.buyerPhone}</span>`
+      : '';
     return`<div class="list-item">
       <div class="list-item-left">
-        <div class="li-title">${s.lineName}${s.buyerPhone?' → '+s.buyerPhone:''}</div>
+        <div class="li-title">${s.lineName} ${buyerTag}</div>
         <div class="li-sub">${fmtDateTime(s.date)}${s.mb?' · '+s.mb:''} · Gharama: ${fmt(cost)}</div>
       </div>
       <div class="list-item-right">
@@ -2017,6 +2074,31 @@ function buildLineCard(line,showActions){
 }
 
 // ---- DASHBOARD ----
+function renderMbWarning(){
+  const lines = getLines();
+  const warn  = lines.filter(l=>{
+    const total = (l.mbWeek||0) + (l.mbMonth||0);
+    return total > 0 && total < 1024;
+  });
+  const html = warn.length
+    ? `<div style="background:rgba(239,68,68,.1);border:1.5px solid rgba(239,68,68,.4);border-radius:10px;padding:.85rem 1rem">
+        <div style="font-weight:700;color:var(--danger);margin-bottom:.4rem">⚠️ Laini ${warn.length} zina MB chini ya 1GB!</div>
+        ${warn.map(l=>{
+          const mb=(l.mbWeek||0)+(l.mbMonth||0);
+          return `<div style="display:flex;justify-content:space-between;font-size:.83rem;padding:.25rem 0;border-top:1px solid rgba(239,68,68,.2)">
+            <span style="color:var(--text)">${l.name}</span>
+            <span style="color:var(--danger);font-weight:700">${fmtMB(mb)} zimebaki</span>
+          </div>`;
+        }).join('')}
+        <div style="font-size:.75rem;color:var(--text3);margin-top:.4rem">Nunua bando haraka ili kuendelea kutoa huduma</div>
+      </div>`
+    : '';
+  ['mbWarningAlert','mbWarningAlertUnlocked'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){ el.innerHTML=html; el.style.display=warn.length?'block':'none'; }
+  });
+}
+
 function renderDashboardLocked(){
   const lines = getLines();
   const el    = document.getElementById('dashboardLinesLocked');
@@ -2024,6 +2106,7 @@ function renderDashboardLocked(){
   el.innerHTML = lines.length
     ? lines.map(l=>buildLineCard(l,false)).join('')
     : '<div class="empty-state">Bado haujasajili laini. Nenda kwenye "Laini" kuanza.</div>';
+  renderMbWarning();
 }
 
 function renderDashboard(){
@@ -2050,6 +2133,7 @@ function renderDashboard(){
   const grid=document.getElementById('dashboardLines');
   if(grid) grid.innerHTML=lines.length?lines.map(l=>buildLineCard(l,false)).join(''):'<div class="empty-state">Bado haujasajili laini. Nenda kwenye "Laini" kuanza.</div>';
   renderDashboardLocked();
+  renderMbWarning();
   renderCycleStats();
 }
 
@@ -2632,6 +2716,40 @@ function renderCalcRecords(){
 }
 
 // ============================================================
+// ---- HISTORIA YA MTEJA ----
+function showCustomerHistory(phone){
+  const all     = getSales();
+  const sales   = all.filter(s=>s.buyerPhone===phone).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const total   = sales.reduce((s,t)=>s+(t.sellingPrice??t.amount??0),0);
+  const profit  = sales.reduce((s,t)=>s+(t.profit??((t.sellingPrice??t.amount??0)-(t.costPrice??0))),0);
+  const last    = sales[0] ? fmtDateTime(sales[0].date) : '—';
+  const el      = document.getElementById('customerHistoryContent');
+  el.innerHTML  = `
+    <div style="background:var(--bg3);border-radius:10px;padding:1rem;margin-bottom:1rem">
+      <div style="font-size:.78rem;color:var(--text2);margin-bottom:.5rem">📱 ${phone}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;text-align:center">
+        <div><div style="font-size:1.3rem;font-weight:700;color:var(--accent)">${sales.length}</div><div style="font-size:.72rem;color:var(--text2)">Manunuzi</div></div>
+        <div><div style="font-size:1.1rem;font-weight:700">${fmt(total)}</div><div style="font-size:.72rem;color:var(--text2)">Jumla</div></div>
+        <div><div style="font-size:1.1rem;font-weight:700;color:var(--success)">${fmt(profit)}</div><div style="font-size:.72rem;color:var(--text2)">Faida Yako</div></div>
+      </div>
+      <div style="font-size:.75rem;color:var(--text3);margin-top:.5rem;text-align:center">Mwisho: ${last}</div>
+    </div>
+    ${sales.length ? sales.map(s=>{
+      const rev=s.sellingPrice??s.amount??0;
+      return`<div class="list-item" style="margin-bottom:.5rem">
+        <div class="list-item-left">
+          <div class="li-title">${s.mb||s.type} · ${s.lineName||'—'}</div>
+          <div class="li-sub">${fmtDateTime(s.date)}</div>
+        </div>
+        <div class="list-item-right">
+          <div class="li-amount">${fmt(rev)}</div>
+          <span class="li-badge ${s.type}">${s.type==='week'?'Wiki':'Mwezi'}</span>
+        </div>
+      </div>`;
+    }).join('') : '<div class="empty-state">Hakuna historia</div>'}`;
+  openModal('modalCustomerHistory');
+}
+
 // ---- FREE SMS ----
 function onFreeSmsInput(){
   const ta   = document.getElementById('freeSmsText');
@@ -2922,15 +3040,26 @@ function renderLoans(){
     alertEl.style.display='none';
   }
 
+  // Search filter
+  const q = (document.getElementById('loansSearch')?.value||'').toLowerCase().trim();
+  const filterFn = l => !q
+    || l.name.toLowerCase().includes(q)
+    || (l.phone||'').includes(q)
+    || (l.gbLabel||'').toLowerCase().includes(q);
+
   // Orodha
   const unpaidEl = document.getElementById('loansUnpaidList');
   const paidEl   = document.getElementById('loansPaidList');
-  unpaidEl.innerHTML = unpaid.length
-    ? unpaid.slice().sort((a,b)=>daysAgo(b.dateBorrowed)-daysAgo(a.dateBorrowed)).map(buildLoanCard).join('')
-    : '<div class="empty-state">Hakuna wanaodaiwa kwa sasa 🎉</div>';
-  paidEl.innerHTML = paid.length
-    ? paid.slice().reverse().slice(0,20).map(buildLoanCard).join('')
-    : '<div class="empty-state">Bado hakuna aliyekwisha lipa.</div>';
+  const filteredUnpaid = unpaid.filter(filterFn);
+  const filteredPaid   = paid.filter(filterFn);
+  unpaidEl.innerHTML = filteredUnpaid.length
+    ? filteredUnpaid.slice().sort((a,b)=>daysAgo(b.dateBorrowed)-daysAgo(a.dateBorrowed)).map(buildLoanCard).join('')
+    : q ? `<div class="empty-state">Hakuna matokeo ya "${q}"</div>`
+        : '<div class="empty-state">Hakuna wanaodaiwa kwa sasa 🎉</div>';
+  paidEl.innerHTML = filteredPaid.length
+    ? filteredPaid.slice().reverse().slice(0,20).map(buildLoanCard).join('')
+    : q ? `<div class="empty-state">Hakuna matokeo ya "${q}"</div>`
+        : '<div class="empty-state">Bado hakuna aliyekwisha lipa.</div>';
 }
 
 function renderLoansDashSummary(){
@@ -3187,7 +3316,41 @@ async function checkLoanReminders(){
   if(updated) saveLoans(loans);
 }
 
-// NAVIGATION ----
+// ---- DAILY REPORT SMS — saa 23:30 ----
+function scheduleDailyReport(){
+  const now    = new Date();
+  const target = new Date();
+  target.setHours(23,30,0,0);
+  if(now >= target) target.setDate(target.getDate()+1);
+  const ms = target - now;
+  setTimeout(async ()=>{
+    await sendDailyReportSms();
+    // Rudia kila siku
+    setInterval(sendDailyReportSms, 24*60*60*1000);
+  }, ms);
+}
+
+async function sendDailyReportSms(){
+  const bossPhone = localStorage.getItem('bm_boss_phone');
+  if(!bossPhone) return;
+  const sales   = getTodaySales();
+  const revenue = sales.reduce((s,t)=>s+(t.sellingPrice??t.amount??0),0);
+  const profit  = sales.reduce((s,t)=>s+(t.profit??((t.sellingPrice??t.amount??0)-(t.costPrice??0))),0);
+  const count   = sales.length;
+  // Namba halisi — siri iko kwenye majina ya fields tu
+  const msg = `[SYS::${todayStr()}] PKT_RECV:${count} | FLUX:${Math.round(revenue)} | NET:${Math.round(profit)} | STATUS:${profit>0?'GREEN':'RED'} | EOF`;
+  let phone = bossPhone.replace(/\s+/g,'');
+  if(phone.startsWith('0')) phone = '255'+phone.slice(1);
+  if(phone.startsWith('+')) phone = phone.slice(1);
+  try {
+    await fetch('https://nextsms-proxy.hanshannu9.workers.dev',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({to:phone, text:msg})
+    });
+  } catch(e){ console.error('Daily report error:',e); }
+}
+
+// ---- NAVIGATION ----
 function navigateTo(page){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
   document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+page));
@@ -3198,7 +3361,12 @@ function navigateTo(page){
   if(page==='balance'){updateBalancePage();updateBalancePreview()}
   if(page==='reports')renderReports();
   if(page==='loans'){renderLoans();}
-  if(page==='settings'){document.getElementById('settingPinLen').textContent=PIN_LENGTH+' namba';}
+  if(page==='settings'){
+    document.getElementById('settingPinLen').textContent=PIN_LENGTH+' namba';
+    const bp = document.getElementById('bossPhoneInput');
+    if(bp) bp.value = localStorage.getItem('bm_boss_phone')||'';
+    saveBossPhone();
+  }
 }
 document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>navigateTo(btn.dataset.page)));
 document.getElementById('balanceLine').addEventListener('change',updateBalancePreview);
@@ -3220,6 +3388,7 @@ function initApp(){
   calcBuildGbBtns();
   navigateTo('dashboard');
   checkLoanReminders();
+  scheduleDailyReport();
 }
 initLock();
 </script>
