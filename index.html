@@ -486,12 +486,29 @@ canvas{display:block;width:100%!important}
         <button class="btn btn-success btn-full" onclick="buyBando()">📦 Sajili Bando Jipya</button>
       </div>
 
-      <div class="section-title" style="margin-top:2rem">📊 Muhtasari wa Mzunguko</div>
+      <div class="section-title" style="margin-top:2rem">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span>📊 Muhtasari wa Mzunguko</span>
+          <button class="btn btn-ghost btn-sm" onclick="toggleProfitView()" style="font-size:.8rem">
+            👁 <span id="cycEyeLabel">Ona</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- LOCKED -->
+      <div id="cycLocked" style="text-align:center;padding:1.5rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-r);margin-bottom:1rem">
+        <div style="font-size:1.5rem;margin-bottom:.5rem">🔒</div>
+        <div style="color:var(--text2);font-size:.85rem">Bonyeza "👁 Ona" kuona muhtasari wa faida</div>
+      </div>
+
+      <!-- UNLOCKED -->
+      <div id="cycUnlocked" style="display:none">
       <div class="stat-grid" id="cycleStats">
         <div class="stat-card success"><div class="stat-label">Faida Yote Jumla</div><div class="stat-value" id="cycTotalProfit">TSh 0</div><div class="stat-note">Tangu mwanzo</div></div>
         <div class="stat-card accent"><div class="stat-label">Iliyorudishwa</div><div class="stat-value" id="cycReinvested">TSh 0</div><div class="stat-note">Faida → Mzunguko</div></div>
         <div class="stat-card"><div class="stat-label">Hela Mpya ya Nje</div><div class="stat-value" id="cycExternal">TSh 0</div><div class="stat-note">Uliingiza kutoka nje</div></div>
         <div class="stat-card warning"><div class="stat-label">Faida Inayobaki</div><div class="stat-value" id="cycRemaining">TSh 0</div><div class="stat-note">Haijawekwa mzunguko</div></div>
+      </div>
       </div>
 
       <div class="section-title" style="margin-top:1.5rem">Historia ya Mabando Yaliyonunuliwa</div>
@@ -820,10 +837,42 @@ canvas{display:block;width:100%!important}
 
 <!-- Profit PIN Modal -->
 <!-- Send SMS with Due Date Modal -->
+<!-- Sell SMS Modal -->
+<div class="modal-overlay" id="modalSellSms">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>📱 Tuma SMS kwa Mnunuzi</h2>
+      <button class="modal-close" onclick="closeModal('modalSellSms')">✕</button>
+    </div>
+    <p style="color:var(--text2);font-size:.85rem;margin-bottom:1rem" id="sellSmsInfo"></p>
+    <input type="hidden" id="sellSmsPhone"/>
+    <div class="form-group">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem">
+        <label style="margin:0">✏️ Ujumbe wa SMS</label>
+        <div style="display:flex;gap:.4rem">
+          <span id="sellSmsCharCount" style="font-size:.72rem;color:var(--text3)">0/160</span>
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:.15rem .5rem;font-size:.72rem" onclick="resetSellSmsMessage()">↺ Default</button>
+        </div>
+      </div>
+      <textarea id="sellSmsText" rows="4"
+        style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.75rem;font-size:.82rem;color:var(--text);font-family:var(--font);resize:vertical;line-height:1.5"
+        oninput="onSellSmsTextInput()"></textarea>
+      <div style="display:flex;justify-content:space-between;margin-top:.3rem">
+        <span id="sellSmsSmsCount" style="font-size:.72rem;color:var(--text3)">SMS 1</span>
+        <span style="font-size:.72rem;color:var(--text3)">160 chars = SMS 1</span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalSellSms')">Ruka SMS</button>
+      <button class="btn btn-primary" onclick="sendSellSmsFromModal()">📱 Tuma</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalSendSms">
   <div class="modal modal-sm">
     <div class="modal-header">
-      <h2>📱 Tuma SMS ya Ukumbusho</h2>
+      <h2>📱 Tuma SMS</h2>
       <button class="modal-close" onclick="closeModal('modalSendSms')">✕</button>
     </div>
     <p style="color:var(--text2);font-size:.85rem;margin-bottom:1rem" id="smsModalName"></p>
@@ -833,8 +882,21 @@ canvas{display:block;width:100%!important}
       <input type="date" id="smsModalDueDate" style="width:100%" oninput="onSmsModalDateChange()"/>
       <div style="font-size:.75rem;color:var(--text3);margin-top:.35rem" id="smsModalDatePreview"></div>
     </div>
-    <div style="background:var(--bg3);border-radius:8px;padding:.75rem;font-size:.8rem;color:var(--text2);margin-bottom:1rem;line-height:1.5" id="smsModalPreview">
-      Chagua tarehe kuona ujumbe...
+    <div class="form-group">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem">
+        <label style="margin:0">✏️ Ujumbe wa SMS</label>
+        <div style="display:flex;gap:.4rem">
+          <span id="smsCharCount" style="font-size:.72rem;color:var(--text3)">0/160</span>
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:.15rem .5rem;font-size:.72rem" onclick="resetSmsMessage()">↺ Default</button>
+        </div>
+      </div>
+      <textarea id="smsModalText" rows="5"
+        style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.75rem;font-size:.82rem;color:var(--text);font-family:var(--font);resize:vertical;line-height:1.5"
+        oninput="onSmsTextInput()" placeholder="Andika ujumbe hapa..."></textarea>
+      <div style="display:flex;justify-content:space-between;margin-top:.3rem">
+        <span id="smsSmsCount" style="font-size:.72rem;color:var(--text3)">SMS 1</span>
+        <span style="font-size:.72rem;color:var(--text3)">160 chars = SMS 1 • 161+ = SMS 2 (bei mara mbili)</span>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modalSendSms')">Ghairi</button>
@@ -1557,6 +1619,13 @@ function showProfitInfo(){
   if(rptUnlocked) rptUnlocked.style.display='block';
   if(rptEyeBtn)   rptEyeBtn.style.color='var(--accent)';
   if(rptEyeLabel) rptEyeLabel.textContent='Ficha Ripoti';
+  // Cycle stats
+  const cycLocked   = document.getElementById('cycLocked');
+  const cycUnlocked = document.getElementById('cycUnlocked');
+  const cycLabel    = document.getElementById('cycEyeLabel');
+  if(cycLocked)   cycLocked.style.display='none';
+  if(cycUnlocked) cycUnlocked.style.display='block';
+  if(cycLabel)    cycLabel.textContent='Ficha';
   // Sell page profit
   const h=document.getElementById('profitHidden');
   const v=document.getElementById('profitVisible');
@@ -1591,6 +1660,13 @@ function hideProfitInfo(){
   if(rptUnlocked) rptUnlocked.style.display='none';
   if(rptEyeBtn)   rptEyeBtn.style.color='';
   if(rptEyeLabel) rptEyeLabel.textContent='Ona Ripoti';
+  // Cycle stats
+  const cycLocked2   = document.getElementById('cycLocked');
+  const cycUnlocked2 = document.getElementById('cycUnlocked');
+  const cycLabel2    = document.getElementById('cycEyeLabel');
+  if(cycLocked2)   cycLocked2.style.display='block';
+  if(cycUnlocked2) cycUnlocked2.style.display='none';
+  if(cycLabel2)    cycLabel2.textContent='Ona';
   // Sell page profit
   const h=document.getElementById('profitHidden');
   const v=document.getElementById('profitVisible');
@@ -1800,10 +1876,11 @@ function sellBundle(){
   // SMS
   const smsOn = document.getElementById('smsToggle')?.checked!==false;
   if(buyer && smsOn){
-    const smsMsg = buildSmsMessage(mbLabel, amount);
-    sendNextSMS(buyer, smsMsg);
+    const defaultMsg = buildSmsMessage(mbLabel, amount);
+    openSellSmsModal(buyer, defaultMsg, mbLabel, amount);
+  } else {
+    renderAll(); updateSellSlotInfo(); renderTodaySales();
   }
-  renderAll();updateSellSlotInfo();renderTodaySales();
 }
 
 // ---- TODAY SALES ----
@@ -2797,58 +2874,123 @@ function buildReminderMsg(loan){
   return `Habari ${salutation}, Tafadhali kumbuka kufanya malipo ya bando lako la ${gbInfo} kabla ya ${dueDateStr}. Ukihitaji msaada wa kufanya malipo, tupo tayari kukusaidia. Asante kwa kuchagua SMART BUNDLES. Contact - 0612626715`;
 }
 
+function openSellSmsModal(phone, defaultMsg, mbLabel, amount){
+  document.getElementById('sellSmsPhone').value = phone;
+  document.getElementById('sellSmsInfo').textContent = `Namba: ${phone} · ${mbLabel} · ${fmt(amount)}`;
+  const ta = document.getElementById('sellSmsText');
+  if(ta){ ta.value = defaultMsg; onSellSmsTextInput(); }
+  openModal('modalSellSms');
+}
+
+function onSellSmsTextInput(){
+  const ta   = document.getElementById('sellSmsText');
+  const cnt  = document.getElementById('sellSmsCharCount');
+  const scnt = document.getElementById('sellSmsSmsCount');
+  if(!ta) return;
+  const len = ta.value.length;
+  const sms = len<=160 ? 1 : Math.ceil(len/153);
+  if(cnt)  cnt.textContent  = `${len}/160`;
+  if(scnt) scnt.textContent = `SMS ${sms}${sms>1?' ⚠️ Bei mara mbili':''}`;
+  if(cnt)  cnt.style.color  = len>160?'var(--danger)':len>140?'var(--warning)':'var(--text3)';
+}
+
+function resetSellSmsMessage(){
+  // Haiwezekani kujua mbLabel/amount tena — tuache mtumiaji aandike upya
+  showToast('Andika ujumbe wako mwenyewe','');
+}
+
+async function sendSellSmsFromModal(){
+  const phone = document.getElementById('sellSmsPhone').value;
+  const msg   = document.getElementById('sellSmsText').value.trim();
+  if(!msg) return showToast('Ujumbe haupaswi kuwa wazi','error');
+  closeModal('modalSellSms');
+  renderAll(); updateSellSlotInfo(); renderTodaySales();
+  showToast('📱 Inatuma SMS...','');
+  let p = phone.replace(/\s+/g,'');
+  if(p.startsWith('0')) p = '255'+p.slice(1);
+  if(p.startsWith('+')) p = p.slice(1);
+  try {
+    const res = await fetch('https://nextsms-proxy.hanshannu9.workers.dev',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({to:p, text:msg})
+    });
+    const data = await res.json();
+    if(res.ok && !data.error) showToast('✅ SMS imetumwa!','success');
+    else showToast('⚠️ SMS haikutumwa','warning');
+  } catch(e){ showToast('⚠️ Tatizo la mtandao','warning'); }
+}
+
 function openSmsModal(id){
   const loan = getLoans().find(l=>l.id===id);
   if(!loan) return;
   document.getElementById('smsModalLoanId').value = id;
   document.getElementById('smsModalName').textContent =
     `Mkopaji: ${loan.name} · ${fmt(loan.amount)}${loan.gbLabel?' ('+loan.gbLabel+')':''}`;
-  // Pre-fill na dueDate iliyohifadhiwa kama ipo
   const dueDateInput = document.getElementById('smsModalDueDate');
   dueDateInput.value = loan.dueDate || '';
   document.getElementById('smsModalDatePreview').textContent = '';
-  document.getElementById('smsModalPreview').textContent = 'Chagua tarehe kuona ujumbe...';
+  const ta = document.getElementById('smsModalText');
+  if(ta) ta.value = '';
   if(loan.dueDate) onSmsModalDateChange();
   openModal('modalSendSms');
   setTimeout(()=>dueDateInput.focus(), 200);
 }
 
 function onSmsModalDateChange(){
-  const id    = document.getElementById('smsModalLoanId').value;
-  const val   = document.getElementById('smsModalDueDate').value;
-  const prev  = document.getElementById('smsModalDatePreview');
-  const msgPrev = document.getElementById('smsModalPreview');
-  if(!val){ prev.textContent=''; msgPrev.textContent='Chagua tarehe kuona ujumbe...'; return; }
+  const id  = document.getElementById('smsModalLoanId').value;
+  const val = document.getElementById('smsModalDueDate').value;
+  const prev= document.getElementById('smsModalDatePreview');
+  if(!val){ if(prev)prev.textContent=''; return; }
   const loan = getLoans().find(l=>l.id===id);
   if(!loan) return;
-  // Preview ya tarehe
   const date  = new Date(val+'T12:00:00');
   const today = new Date(); today.setHours(0,0,0,0);
   const diff  = Math.ceil((date-today)/(1000*60*60*24));
-  const label = date.toLocaleDateString('sw-TZ',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
-  prev.textContent = diff>0 ? `${label} — siku ${diff} zinazoibaki`
-    : diff===0 ? `${label} — Leo ni siku ya mwisho`
-    : `⚠️ Tarehe hii imepita (siku ${Math.abs(diff)} zilizopita)`;
-  prev.style.color = diff>0?'var(--text2)':diff===0?'var(--warning)':'var(--danger)';
-  // Preview ya ujumbe
+  if(prev){
+    prev.textContent = diff>0?`Siku ${diff} zinazoibaki`:diff===0?'Leo ni siku ya mwisho':'⚠️ Imepita';
+    prev.style.color = diff>0?'var(--text2)':diff===0?'var(--warning)':'var(--danger)';
+  }
+  // Weka ujumbe kwenye textarea
   const tempLoan = {...loan, dueDate: val};
-  msgPrev.textContent = buildReminderMsg(tempLoan);
+  const msg = buildReminderMsg(tempLoan);
+  const ta  = document.getElementById('smsModalText');
+  if(ta){ ta.value=msg; onSmsTextInput(); }
+}
+
+function onSmsTextInput(){
+  const ta   = document.getElementById('smsModalText');
+  const cnt  = document.getElementById('smsCharCount');
+  const scnt = document.getElementById('smsSmsCount');
+  if(!ta) return;
+  const len  = ta.value.length;
+  const sms  = len<=160 ? 1 : Math.ceil(len/153);
+  if(cnt)  cnt.textContent  = `${len}/160`;
+  if(scnt) scnt.textContent = `SMS ${sms}${sms>1?' ⚠️ Bei mara mbili':''}`;
+  if(cnt)  cnt.style.color  = len>160?'var(--danger)':len>140?'var(--warning)':'var(--text3)';
+}
+
+function resetSmsMessage(){
+  const id  = document.getElementById('smsModalLoanId').value;
+  const due = document.getElementById('smsModalDueDate').value;
+  if(!due){ showToast('Chagua tarehe kwanza','error'); return; }
+  const loan = getLoans().find(l=>l.id===id);
+  if(!loan) return;
+  const ta = document.getElementById('smsModalText');
+  if(ta){ ta.value = buildReminderMsg({...loan, dueDate:due}); onSmsTextInput(); }
 }
 
 async function sendSmsFromModal(){
   const id  = document.getElementById('smsModalLoanId').value;
   const due = document.getElementById('smsModalDueDate').value;
+  const msg = document.getElementById('smsModalText').value.trim();
   if(!due) return showToast('Chagua tarehe ya mwisho kwanza','error');
+  if(!msg) return showToast('Ujumbe haupaswi kuwa wazi','error');
   const loans = getLoans();
   const idx   = loans.findIndex(l=>l.id===id);
   if(idx<0) return;
   const loan = loans[idx];
   if(!loan.phone) return showToast('Mkopaji hana nambari ya simu','error');
-  // Hifadhi dueDate kwenye loan record
   loans[idx].dueDate = due;
-  // Jenga ujumbe na tarehe iliyochaguliwa
-  const tempLoan = {...loan, dueDate: due};
-  const msg = buildReminderMsg(tempLoan);
   let phone = loan.phone.replace(/\s+/g,'');
   if(phone.startsWith('0')) phone = '255'+phone.slice(1);
   if(phone.startsWith('+')) phone = phone.slice(1);
@@ -2865,9 +3007,7 @@ async function sendSmsFromModal(){
       saveLoans(loans);
       showToast(`✅ SMS imetumwa kwa ${loan.name}!`,'success');
       renderLoans();
-    } else {
-      showToast('⚠️ SMS haikutumwa — jaribu tena','warning');
-    }
+    } else { showToast('⚠️ SMS haikutumwa — jaribu tena','warning'); }
   } catch(e){ showToast('⚠️ Tatizo la mtandao','warning'); }
 }
 
