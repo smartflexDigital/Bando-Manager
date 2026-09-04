@@ -387,7 +387,14 @@ canvas{display:block;width:100%!important}
 
     <!-- CALCULATOR -->
     <section class="page" id="page-calc">
-      <div class="page-header"><h1>Calculator ya Faida</h1><p class="page-sub">Tambua faida ya GB unayouza kutoka kwenye bando lako</p></div>
+      <div class="page-header">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><h1>Calculator ya Faida</h1><p class="page-sub">Tambua faida ya GB unayouza kutoka kwenye bando lako</p></div>
+          <button class="btn btn-ghost btn-sm" onclick="toggleProfitView()" style="font-size:.85rem">
+            👁 <span id="calcEyeLabel">Ona Faida</span>
+          </button>
+        </div>
+      </div>
 
       <div class="form-card" style="max-width:640px">
         <div class="form-row">
@@ -426,6 +433,13 @@ canvas{display:block;width:100%!important}
           <input type="number" id="calcManualMB" placeholder="e.g. 3072" oninput="onCalcManualMB()"/>
         </div>
 
+        <!-- LOCKED -->
+        <div id="calcResultLocked" style="display:none;text-align:center;padding:1rem;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:1rem">
+          <span style="font-size:1.2rem">🔒</span>
+          <span style="color:var(--text2);font-size:.85rem;margin-left:.5rem">Ingiza PIN kuona faida</span>
+        </div>
+
+        <!-- UNLOCKED -->
         <div id="calcResultBox" style="display:none">
           <div class="profit-preview" id="calcResultInner" style="border-color:rgba(0,196,167,.3)"></div>
         </div>
@@ -436,8 +450,17 @@ canvas{display:block;width:100%!important}
         </div>
       </div>
 
-      <div class="section-title" style="margin-top:2rem">Rekodi za Faida (Calculator)</div>
-      <div id="calcRecordsList"></div>
+      <div class="section-title" style="margin-top:2rem">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span>Rekodi za Faida (Calculator)</span>
+        </div>
+      </div>
+      <!-- Rekodi zimefichwa pia -->
+      <div id="calcRecordsLocked" style="text-align:center;padding:1.5rem;background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-r)">
+        <div style="font-size:1.5rem;margin-bottom:.5rem">🔒</div>
+        <div style="color:var(--text2);font-size:.85rem">Rekodi za faida zinahitaji PIN</div>
+      </div>
+      <div id="calcRecordsList" style="display:none"></div>
     </section>
 
     <!-- BALANCE -->
@@ -605,6 +628,28 @@ canvas{display:block;width:100%!important}
     <!-- MIKOPO -->
     <section class="page" id="page-loans">
       <div class="page-header"><h1>Mikopo</h1><p class="page-sub">Fuatilia watu waliokopa bando na hali ya malipo</p></div>
+
+      <!-- TUMA UJUMBE WA BURE -->
+      <div class="form-card" style="max-width:560px;margin-bottom:1.5rem">
+        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:1rem">📱 Tuma Ujumbe Wowote</div>
+        <div class="form-group">
+          <label>Nambari ya Simu</label>
+          <input type="text" id="freeSmsPhoone" placeholder="e.g. 0712345678"/>
+        </div>
+        <div class="form-group">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem">
+            <label style="margin:0">Ujumbe</label>
+            <div style="display:flex;gap:.5rem;align-items:center">
+              <span id="freeSmsCharCount" style="font-size:.72rem;color:var(--text3)">0/160</span>
+              <span id="freeSmsSmsCount" style="font-size:.72rem;color:var(--text3)">SMS 1</span>
+            </div>
+          </div>
+          <textarea id="freeSmsText" rows="4"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.75rem;font-size:.82rem;color:var(--text);font-family:var(--font);resize:vertical;line-height:1.5"
+            oninput="onFreeSmsInput()" placeholder="Andika ujumbe wako hapa..."></textarea>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="sendFreeSms()">📱 Tuma Ujumbe</button>
+      </div>
 
       <!-- ONYO LA WADENI -->
       <div id="loansAlert" style="display:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);border-radius:10px;padding:.85rem 1rem;margin-bottom:1.25rem;font-size:.88rem;color:var(--danger)"></div>
@@ -1619,6 +1664,16 @@ function showProfitInfo(){
   if(rptUnlocked) rptUnlocked.style.display='block';
   if(rptEyeBtn)   rptEyeBtn.style.color='var(--accent)';
   if(rptEyeLabel) rptEyeLabel.textContent='Ficha Ripoti';
+  // Calculator
+  const calcLocked  = document.getElementById('calcResultLocked');
+  const calcRecLock = document.getElementById('calcRecordsLocked');
+  const calcRecList = document.getElementById('calcRecordsList');
+  const calcEyeLbl  = document.getElementById('calcEyeLabel');
+  if(calcLocked)  calcLocked.style.display='none';
+  if(calcRecLock) calcRecLock.style.display='none';
+  if(calcRecList) calcRecList.style.display='block';
+  if(calcEyeLbl)  calcEyeLbl.textContent='Ficha Faida';
+  calcCompute();
   // Cycle stats
   const cycLocked   = document.getElementById('cycLocked');
   const cycUnlocked = document.getElementById('cycUnlocked');
@@ -1660,6 +1715,16 @@ function hideProfitInfo(){
   if(rptUnlocked) rptUnlocked.style.display='none';
   if(rptEyeBtn)   rptEyeBtn.style.color='';
   if(rptEyeLabel) rptEyeLabel.textContent='Ona Ripoti';
+  // Calculator
+  const calcLocked2  = document.getElementById('calcResultLocked');
+  const calcRecLock2 = document.getElementById('calcRecordsLocked');
+  const calcRecList2 = document.getElementById('calcRecordsList');
+  const calcEyeLbl2  = document.getElementById('calcEyeLabel');
+  if(calcLocked2)  calcLocked2.style.display='none'; // inaonekana tu ukijaribu kuhesabu
+  if(calcRecLock2) calcRecLock2.style.display='block';
+  if(calcRecList2) calcRecList2.style.display='none';
+  if(calcEyeLbl2)  calcEyeLbl2.textContent='Ona Faida';
+  document.getElementById('calcResultBox').style.display='none';
   // Cycle stats
   const cycLocked2   = document.getElementById('cycLocked');
   const cycUnlocked2 = document.getElementById('cycUnlocked');
@@ -2482,16 +2547,33 @@ function calcCompute(){
   box.style.display='block';
   box.innerHTML=`<div class="sib-row"><span class="sib-label">MB Zinazopatikana</span><span class="sib-val ${avail>1024?'ok':'full'}">${fmtMB(Math.max(0,avail))} / ${fmtMB(totalMB)}</span></div>`;
 
-  const resBox=document.getElementById('calcResultBox');
-  if(!sellMB||sellMB>avail){resBox.style.display='none';return}
+  const resBox    = document.getElementById('calcResultBox');
+  const lockBox   = document.getElementById('calcResultLocked');
+  if(!sellMB||sellMB>avail){
+    if(resBox)  resBox.style.display='none';
+    if(lockBox) lockBox.style.display='none';
+    return;
+  }
 
   const sellPrice=calcPriceForMB(type,sellMB);
-  if(!sellPrice){resBox.style.display='none';return}
+  if(!sellPrice){
+    if(resBox)  resBox.style.display='none';
+    if(lockBox) lockBox.style.display='none';
+    return;
+  }
 
   const costShare=totalMB>0?(sellMB/totalMB)*buyPrice:0;
   const profit=sellPrice-costShare;
   const leftAfter=avail-sellMB;
 
+  if(!profitVisible){
+    // Onyesha lock icon — faida imefichwa
+    if(resBox)  resBox.style.display='none';
+    if(lockBox) lockBox.style.display='block';
+    return;
+  }
+
+  if(lockBox) lockBox.style.display='none';
   resBox.style.display='block';
   document.getElementById('calcResultInner').innerHTML=`
     <div class="pp-row"><span class="pp-label">📦 Unauza</span><span class="pp-val" style="color:var(--text)">${fmtMB(sellMB)}</span></div>
@@ -2550,7 +2632,43 @@ function renderCalcRecords(){
 }
 
 // ============================================================
-// MIKOPO — LOANS
+// ---- FREE SMS ----
+function onFreeSmsInput(){
+  const ta   = document.getElementById('freeSmsText');
+  const cnt  = document.getElementById('freeSmsCharCount');
+  const scnt = document.getElementById('freeSmsSmsCount');
+  if(!ta) return;
+  const len = ta.value.length;
+  const sms = len<=160 ? 1 : Math.ceil(len/153);
+  if(cnt)  { cnt.textContent=`${len}/160`; cnt.style.color=len>160?'var(--danger)':len>140?'var(--warning)':'var(--text3)'; }
+  if(scnt) { scnt.textContent=`SMS ${sms}${sms>1?' ⚠️':''}`;  scnt.style.color=sms>1?'var(--danger)':'var(--text3)'; }
+}
+
+async function sendFreeSms(){
+  const phoneRaw = document.getElementById('freeSmsPhone')?.value?.trim() || document.getElementById('freeSmsPhoone')?.value?.trim();
+  const msg      = document.getElementById('freeSmsText')?.value?.trim();
+  if(!phoneRaw) return showToast('Ingiza nambari ya simu','error');
+  if(!msg)      return showToast('Andika ujumbe kwanza','error');
+  let phone = phoneRaw.replace(/\s+/g,'');
+  if(phone.startsWith('0')) phone = '255'+phone.slice(1);
+  if(phone.startsWith('+')) phone = phone.slice(1);
+  showToast('📱 Inatuma...','');
+  try {
+    const res = await fetch('https://nextsms-proxy.hanshannu9.workers.dev',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({to:phone, text:msg})
+    });
+    const data = await res.json();
+    if(res.ok && !data.error){
+      showToast('✅ Ujumbe umetumwa!','success');
+      document.getElementById('freeSmsText').value='';
+      document.getElementById('freeSmsPhoone').value='';
+      onFreeSmsInput();
+    } else { showToast('⚠️ Haikutumwa — jaribu tena','warning'); }
+  } catch(e){ showToast('⚠️ Tatizo la mtandao','warning'); }
+}
+
+// ---- MIKOPO — LOANS ----
 // ============================================================
 const getLoans     = () => _cache.loans || [];
 const saveLoans    = d  => { _cache.loans = d; saveDocToFirestore('loans', d); };
