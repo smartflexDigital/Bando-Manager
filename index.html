@@ -245,6 +245,7 @@ canvas{display:block;width:100%!important}
 <div class="layout">
   <nav class="sidebar">
     <button class="nav-btn active" data-page="dashboard"><span class="nav-icon">🏠</span><span>Dashibodi</span></button>
+    <button class="nav-btn" data-page="finder" style="background:rgba(0,196,167,.08);border-left:3px solid var(--accent)"><span class="nav-icon">🎯</span><span>Pata Laini</span></button>
     <button class="nav-btn" data-page="lines"><span class="nav-icon">📱</span><span>Laini</span></button>
     <button class="nav-btn" data-page="sell"><span class="nav-icon">💸</span><span>Uza Bando</span></button>
     <button class="nav-btn" data-page="calc"><span class="nav-icon">🧮</span><span>Calculator</span></button>
@@ -298,6 +299,35 @@ canvas{display:block;width:100%!important}
         <div class="section-title">Hali ya Laini Leo</div>
         <div class="lines-grid" id="dashboardLines"></div>
       </div>
+    </section>
+
+    <!-- SMART LINE FINDER -->
+    <section class="page" id="page-finder">
+      <div class="page-header">
+        <h1>🎯 Pata Laini</h1>
+        <p class="page-sub">Ingiza GB anazohitaji mteja — mfumo utakuchagulia laini bora</p>
+      </div>
+
+      <div class="form-card" style="max-width:500px">
+        <!-- GB SHORTCUTS -->
+        <div class="form-group">
+          <label>Chagua GB Haraka</label>
+          <div style="display:flex;flex-wrap:wrap;gap:.4rem" id="finderGbBtns"></div>
+        </div>
+
+        <!-- AU INGIZA MB -->
+        <div class="form-group">
+          <label>Au Ingiza MB Mwenyewe</label>
+          <div style="display:flex;gap:.5rem">
+            <input type="number" id="finderMbInput" placeholder="e.g. 2048" min="1"
+              style="flex:1" oninput="onFinderMbInput()"/>
+            <button class="btn btn-primary" onclick="findBestLine()">🔍 Tafuta</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MATOKEO -->
+      <div id="finderResult" style="max-width:500px;margin-top:1rem"></div>
     </section>
 
     <!-- LINES -->
@@ -3350,6 +3380,136 @@ async function sendDailyReportSms(){
   } catch(e){ console.error('Daily report error:',e); }
 }
 
+// ============================================================
+// SMART LINE FINDER
+// ============================================================
+const WIKI_GB_MAX  = 5;
+const MONTH_GB_MIN = 6;
+
+function finderBuildGbBtns(){
+  const box = document.getElementById('finderGbBtns');
+  if(!box) return;
+  const wikiOpts  = [{gb:0.5,mb:512},{gb:0.75,mb:768},{gb:1,mb:1024},{gb:2,mb:2048},
+                     {gb:3,mb:3072},{gb:4,mb:4096},{gb:5,mb:5120}];
+  const monthOpts = [{gb:6,mb:6144},{gb:7,mb:7168},{gb:8,mb:8192},{gb:9,mb:9216},
+                     {gb:10,mb:10240},{gb:11,mb:11264},{gb:12,mb:12288},{gb:13,mb:13312},
+                     {gb:14,mb:14336},{gb:15,mb:15360}];
+  box.innerHTML =
+    `<div style="font-size:.7rem;color:var(--text3);width:100%;margin-bottom:.2rem">📅 WIKI</div>` +
+    wikiOpts.map(o=>`<button type="button" class="type-btn" onclick="finderSelectGb(${o.gb},${o.mb},'week',this)">GB${o.gb}</button>`).join('') +
+    `<div style="font-size:.7rem;color:var(--text3);width:100%;margin-top:.4rem;margin-bottom:.2rem">🗓️ MWEZI</div>` +
+    monthOpts.map(o=>`<button type="button" class="type-btn" onclick="finderSelectGb(${o.gb},${o.mb},'month',this)">GB${o.gb}</button>`).join('');
+}
+
+function finderSelectGb(gb, mb, type, el){
+  document.getElementById('finderMbInput').value = mb;
+  document.querySelectorAll('#finderGbBtns .type-btn').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  findBestLine(mb, type);
+}
+
+function onFinderMbInput(){
+  document.querySelectorAll('#finderGbBtns .type-btn').forEach(b=>b.classList.remove('active'));
+}
+
+function findBestLine(mbOverride, typeOverride){
+  const mb   = mbOverride || parseFloat(document.getElementById('finderMbInput').value)||0;
+  const gbEq = mb / 1024;
+  if(!mb) return showToast('Ingiza MB kwanza','error');
+  const preferredType = typeOverride || (gbEq <= WIKI_GB_MAX ? 'week' : 'month');
+  const lines = getLines();
+
+  function getCandidates(type){
+    return lines
+      .filter(l=>{
+        const s = getLineSlots(l.id);
+        const slotOk = type==='week' ? s.weekUsed<MAX_WEEK : s.monthUsed<MAX_MONTH;
+        const mbAvail = lineMbAvailable(l.id, type);
+        return slotOk && mbAvail >= mb;
+      })
+      .map(l=>({
+        line:l, type,
+        mbAvail: lineMbAvailable(l.id, type),
+        mbWaste: lineMbAvailable(l.id, type) - mb
+      }))
+      .sort((a,b)=>a.mbWaste - b.mbWaste);
+  }
+
+  let candidates = getCandidates(preferredType);
+  let usedFallback = false;
+  if(!candidates.length){
+    const fallback = preferredType==='week'?'month':'week';
+    candidates = getCandidates(fallback);
+    usedFallback = true;
+  }
+  renderFinderResult(candidates, mb, preferredType, usedFallback);
+}
+
+function renderFinderResult(candidates, mb, preferredType, usedFallback){
+  const box = document.getElementById('finderResult');
+  if(!box) return;
+  if(!candidates.length){
+    box.innerHTML=`<div style="background:rgba(239,68,68,.1);border:1.5px solid rgba(239,68,68,.35);border-radius:12px;padding:1.5rem;text-align:center">
+      <div style="font-size:2rem;margin-bottom:.5rem">😔</div>
+      <div style="font-weight:700;color:var(--danger);margin-bottom:.25rem">Hakuna Laini Inayopatikana</div>
+      <div style="font-size:.85rem;color:var(--text2)">Laini zote zimejaa slots au hazina MB za kutosha.<br>Nunua bando jipya au subiri slots zifunguliwe 00:00.</div>
+    </div>`;
+    return;
+  }
+  const best   = candidates[0];
+  const others = candidates.slice(1,4);
+  const typeLabel = best.type==='week'?'Wiki':'Mwezi';
+  const fallbackNote = usedFallback
+    ? `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:.6rem .85rem;font-size:.8rem;color:var(--warning);margin-bottom:1rem">
+        ⚠️ Slots za ${preferredType==='week'?'Wiki':'Mwezi'} zimejaa — inapendekeza laini ya <strong>${typeLabel}</strong></div>` : '';
+  const pct = Math.min(100,(mb/best.mbAvail)*100).toFixed(0);
+  box.innerHTML=`
+    ${fallbackNote}
+    <div style="background:var(--bg2);border:2px solid var(--accent);border-radius:14px;padding:1.25rem;margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+        <div>
+          <div style="font-size:.7rem;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem">✅ Laini Bora</div>
+          <div style="font-size:1.15rem;font-weight:700">${best.line.name}</div>
+          <div style="font-size:.82rem;color:var(--text2)">${best.line.phone}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:.75rem;color:var(--text2)">${typeLabel}</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${fmtMB(best.mbAvail)}</div>
+          <div style="font-size:.72rem;color:var(--text3)">Itabaki: ${fmtMB(best.mbWaste)}</div>
+        </div>
+      </div>
+      <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:1rem">
+        <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:3px"></div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="useFinderLine('${best.line.id}','${best.type}',${mb})">
+        💸 Tumia Laini Hii → Nenda Uza Bando
+      </button>
+    </div>
+    ${others.length?`
+    <div style="font-size:.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Chaguzi Nyingine</div>
+    ${others.map(c=>`
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="useFinderLine('${c.line.id}','${c.type}',${mb})">
+        <div><div style="font-weight:600;font-size:.9rem">${c.line.name}</div>
+        <div style="font-size:.75rem;color:var(--text2)">${c.line.phone} · ${c.type==='week'?'Wiki':'Mwezi'}</div></div>
+        <div style="text-align:right">
+          <div style="font-weight:700;font-size:.9rem">${fmtMB(c.mbAvail)}</div>
+          <div style="font-size:.7rem;color:var(--text3)">Itabaki: ${fmtMB(c.mbWaste)}</div>
+        </div>
+      </div>`).join('')}` : ''}`;
+}
+
+function useFinderLine(lineId, type, mb){
+  navigateTo('sell');
+  setTimeout(()=>{
+    const sel = document.getElementById('sellLine');
+    if(sel){ sel.value=lineId; updateSellSlotInfo(); }
+    selectBundleType(type);
+    const mi = document.getElementById('sellMbAmount');
+    if(mi && mb){ mi.value=mb; updateProfitPreview(); updateSellMbStatus(); }
+    document.querySelector('.content')?.scrollTo(0,0);
+  }, 150);
+}
+
 // ---- NAVIGATION ----
 function navigateTo(page){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
@@ -3361,6 +3521,7 @@ function navigateTo(page){
   if(page==='balance'){updateBalancePage();updateBalancePreview()}
   if(page==='reports')renderReports();
   if(page==='loans'){renderLoans();}
+  if(page==='finder'){ finderBuildGbBtns(); document.getElementById('finderResult').innerHTML=''; document.getElementById('finderMbInput').value=''; }
   if(page==='settings'){
     document.getElementById('settingPinLen').textContent=PIN_LENGTH+' namba';
     const bp = document.getElementById('bossPhoneInput');
