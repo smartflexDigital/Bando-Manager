@@ -1008,6 +1008,58 @@ canvas{display:block;width:100%!important}
   </div>
 </div>
 
+<!-- Edit Customer Modal -->
+<div class="modal-overlay" id="modalEditCustomer">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>✏️ Hariri Mteja</h2>
+      <button class="modal-close" onclick="closeModal('modalEditCustomer')">✕</button>
+    </div>
+    <input type="hidden" id="editCustomerPhone"/>
+    <div class="form-group">
+      <label>Namba ya Simu</label>
+      <input type="text" id="editCustomerPhoneShow" disabled
+        style="opacity:.6;cursor:not-allowed"/>
+    </div>
+    <div class="form-group">
+      <label>Jina la Mteja (Hiari)</label>
+      <input type="text" id="editCustomerName" placeholder="e.g. Juma Ally"/>
+    </div>
+    <div class="form-group">
+      <label>Chanzo</label>
+      <div class="type-toggle" style="flex-wrap:wrap">
+        <button type="button" class="type-btn active" data-source="direct" onclick="selectCustomerSource('direct',this)">👤 Mteja Wangu</button>
+        <button type="button" class="type-btn" data-source="agent" onclick="selectCustomerSource('agent',this)">🤝 Wa Agent</button>
+      </div>
+    </div>
+    <div id="agentNameRow" style="display:none">
+      <div class="form-group">
+        <label>Jina la Agent</label>
+        <input type="text" id="editCustomerAgent" placeholder="e.g. Baraka, Amina..."/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Maelezo (Hiari)</label>
+      <input type="text" id="editCustomerNote" placeholder="e.g. Mzigo wa wiki, rafiki wa karibu"/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalEditCustomer')">Ghairi</button>
+      <button class="btn btn-primary" onclick="saveCustomerProfile()">💾 Hifadhi</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Customer Modal -->
+<div class="modal-overlay" id="modalViewCustomer">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>👤 Taarifa za Mteja</h2>
+      <button class="modal-close" onclick="closeModal('modalViewCustomer')">✕</button>
+    </div>
+    <div id="viewCustomerContent"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalSendSms">
   <div class="modal modal-sm">
     <div class="modal-header">
@@ -1308,7 +1360,7 @@ let fbApp=null, fbDb=null, fbReady=false;
 let syncStatus='idle'; // idle | syncing | synced | error
 
 // In-memory cache — mirrors Firestore, read/written synchronously by app code
-let _cache = { lines:[], sales:[], transactions:[], slots:[], calcRecords:[], loans:[], bandos:[], lastDate:null };
+let _cache = { lines:[], sales:[], transactions:[], slots:[], calcRecords:[], loans:[], bandos:[], customers:[], lastDate:null };
 
 function setSyncStatus(s){
   syncStatus=s;
@@ -1357,7 +1409,7 @@ async function initFirebase(){
   try{
     fbApp = firebase.initializeApp(firebaseConfig);
     fbDb  = firebase.firestore();
-    const [lines,sales,transactions,slots,calcRecords,lastDate,loans,bandos] = await Promise.all([
+    const [lines,sales,transactions,slots,calcRecords,lastDate,loans,bandos,customers] = await Promise.all([
       loadDocFromFirestore('lines',[]),
       loadDocFromFirestore('sales',[]),
       loadDocFromFirestore('transactions',[]),
@@ -1365,11 +1417,12 @@ async function initFirebase(){
       loadDocFromFirestore('calcRecords',[]),
       loadDocFromFirestore('meta',{}).then(m=>m && m.lastDate ? m.lastDate : null),
       loadDocFromFirestore('loans',[]),
-      loadDocFromFirestore('bandos',[])
+      loadDocFromFirestore('bandos',[]),
+      loadDocFromFirestore('customers',[])
     ]);
     _cache.lines=lines; _cache.sales=sales; _cache.transactions=transactions;
     _cache.slots=slots; _cache.calcRecords=calcRecords; _cache.lastDate=lastDate;
-    _cache.loans=loans; _cache.bandos=bandos;
+    _cache.loans=loans; _cache.bandos=bandos; _cache.customers=customers;
     fbReady=true;
     await loadPinFromFirestore();
     setSyncStatus('synced');
@@ -3407,10 +3460,29 @@ async function sendDailyReportSms(){
 // ============================================================
 // WATEJA — CUSTOMER DATABASE
 // ============================================================
-function buildCustomerDb(){
-  const sales = getSales();
-  const db    = {}; // phone → {phone, count, totalSpent, firstDate, lastDate}
+// Profiles zimehifadhiwa Firestore: bandoManager/{id}/data/customers
+// Mauzo yanajumlishwa kiotomatiki
 
+const getCustomerProfiles = () => _cache.customers || [];
+const saveCustomerProfiles = d => { _cache.customers = d; saveDocToFirestore('customers', d); };
+
+function getOrCreateProfile(phone){
+  const profiles = getCustomerProfiles();
+  let p = profiles.find(c=>c.phone===phone);
+  if(!p){
+    p = { phone, name:'', source:'direct', agent:'', note:'', addedAt: new Date().toISOString() };
+    profiles.push(p);
+    saveCustomerProfiles(profiles);
+  }
+  return p;
+}
+
+function buildCustomerDb(){
+  const sales    = getSales();
+  const profiles = getCustomerProfiles();
+  const db = {};
+
+  // Kwanza jenga kutoka mauzo
   sales.forEach(s=>{
     if(!s.buyerPhone) return;
     const phone = s.buyerPhone.trim();
@@ -3418,7 +3490,7 @@ function buildCustomerDb(){
     const rev = s.sellingPrice ?? s.amount ?? 0;
     const dt  = s.date || '';
     if(!db[phone]){
-      db[phone] = {phone, count:0, totalSpent:0, firstDate:dt, lastDate:dt};
+      db[phone] = { phone, count:0, totalSpent:0, firstDate:dt, lastDate:dt };
     }
     db[phone].count++;
     db[phone].totalSpent += rev;
@@ -3426,85 +3498,197 @@ function buildCustomerDb(){
     if(dt > db[phone].lastDate)  db[phone].lastDate  = dt;
   });
 
-  // Panga kwa mara nyingi zaidi kwanza
-  return Object.values(db).sort((a,b)=>b.count - a.count);
+  // Ongeza wateja waliowahi kuongezwa kwenye profiles lakini hawana mauzo
+  profiles.forEach(p=>{
+    if(!db[p.phone]) db[p.phone] = { phone:p.phone, count:0, totalSpent:0, firstDate:'', lastDate:'' };
+  });
+
+  // Unganisha na profiles
+  return Object.values(db).map(c=>{
+    const profile = profiles.find(p=>p.phone===c.phone) || {};
+    return { ...c, ...profile, phone: c.phone };
+  }).sort((a,b)=>b.count - a.count);
 }
 
 function renderCustomers(){
   const customers = buildCustomerDb();
   const q = (document.getElementById('customerSearch')?.value||'').toLowerCase().trim();
-  const filtered = q ? customers.filter(c=>c.phone.includes(q)) : customers;
+  const filtered = q
+    ? customers.filter(c=>c.phone.includes(q)||(c.name||'').toLowerCase().includes(q)||(c.agent||'').toLowerCase().includes(q))
+    : customers;
 
   // Stats
   const statsEl = document.getElementById('customerStats');
   if(statsEl){
     const totalSpent = customers.reduce((s,c)=>s+c.totalSpent,0);
     const repeat     = customers.filter(c=>c.count>1).length;
+    const agents     = customers.filter(c=>c.source==='agent').length;
     statsEl.innerHTML=`
       <div class="stat-card accent"><div class="stat-label">Wateja Wote</div><div class="stat-value">${customers.length}</div><div class="stat-note">Namba tofauti</div></div>
-      <div class="stat-card"><div class="stat-label">Wanunuzi wa Mara kwa Mara</div><div class="stat-value">${repeat}</div><div class="stat-note">Wamenunua 2+ mara</div></div>
-      <div class="stat-card success"><div class="stat-label">Jumla ya Mapato</div><div class="stat-value">${fmt(totalSpent)}</div><div class="stat-note">Kutoka wateja wote</div></div>`;
+      <div class="stat-card"><div class="stat-label">Wanaorudi Tena</div><div class="stat-value">${repeat}</div><div class="stat-note">Wamenunua 2+ mara</div></div>
+      <div class="stat-card success"><div class="stat-label">Jumla ya Mapato</div><div class="stat-value">${fmt(totalSpent)}</div><div class="stat-note">Kutoka wateja wote</div></div>
+      <div class="stat-card"><div class="stat-label">Wa Agent</div><div class="stat-value">${agents}</div><div class="stat-note">Waliletwa na agent</div></div>`;
   }
 
-  // List
   const listEl = document.getElementById('customerList');
   if(!listEl) return;
 
   if(!filtered.length){
     listEl.innerHTML = q
-      ? `<div class="empty-state">Hakuna mteja mwenye namba "${q}"</div>`
-      : `<div class="empty-state">Hakuna wateja bado — anza kurekodi mauzo na namba za wateja</div>`;
+      ? `<div class="empty-state">Hakuna mteja mwenye "${q}"</div>`
+      : `<div class="empty-state">Hakuna wateja bado</div>`;
     return;
   }
 
   listEl.innerHTML = filtered.map((c,i)=>{
-    const repeatBadge = c.count > 1
-      ? `<span style="font-size:.65rem;font-weight:700;padding:.12rem .4rem;border-radius:4px;background:rgba(0,196,167,.15);color:var(--accent);margin-left:.35rem">⭐ Mstari wa ${c.count}x</span>`
+    const sourceBadge = c.source==='agent'
+      ? `<span style="font-size:.65rem;font-weight:700;padding:.12rem .4rem;border-radius:4px;background:rgba(251,191,36,.15);color:var(--warning);margin-left:.35rem">🤝 ${c.agent||'Agent'}</span>`
+      : `<span style="font-size:.65rem;font-weight:700;padding:.12rem .4rem;border-radius:4px;background:rgba(0,196,167,.12);color:var(--accent);margin-left:.35rem">👤 Wangu</span>`;
+    const repeatBadge = c.count>1
+      ? `<span style="font-size:.65rem;padding:.12rem .4rem;border-radius:4px;background:rgba(99,102,241,.15);color:#818cf8;margin-left:.35rem">⭐ ${c.count}x</span>`
       : '';
-    return`<div class="list-item" style="cursor:pointer" onclick="showCustomerHistory('${c.phone}')">
-      <div class="list-item-left">
-        <div class="li-title" style="display:flex;align-items:center;gap:.35rem">
-          <span style="font-size:.8rem;color:var(--text3);font-weight:400">#${i+1}</span>
-          📱 ${c.phone}${repeatBadge}
+    return`<div class="list-item">
+      <div class="list-item-left" style="flex:1;cursor:pointer" onclick="viewCustomer('${c.phone}')">
+        <div class="li-title" style="display:flex;align-items:center;flex-wrap:wrap;gap:.2rem">
+          <span style="font-size:.78rem;color:var(--text3)">#${i+1}</span>
+          <span>${c.name || c.phone}</span>
+          ${c.name?`<span style="font-size:.75rem;color:var(--text2)">${c.phone}</span>`:''}
+          ${sourceBadge}${repeatBadge}
         </div>
         <div class="li-sub">
-          Kwanza: ${fmtDateTime(c.firstDate)} · Mwisho: ${fmtDateTime(c.lastDate)}
+          ${c.count?`${c.count} mauzo · ${fmt(c.totalSpent)} · Mwisho: ${c.lastDate?fmtDateTime(c.lastDate):'—'}`:'Mteja mpya'}
+          ${c.note?` · 📝 ${c.note}`:''}
         </div>
       </div>
-      <div class="list-item-right">
-        <div class="li-amount">${fmt(c.totalSpent)}</div>
-        <div style="font-size:.75rem;color:var(--text2)">${c.count} mauzo</div>
+      <div style="display:flex;gap:.35rem;align-items:center;margin-left:.5rem">
+        <button class="btn btn-ghost btn-sm" onclick="editCustomer('${c.phone}')" title="Hariri">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.phone}')" title="Futa">🗑</button>
       </div>
     </div>`;
   }).join('');
 }
 
+let _editCustomerSource = 'direct';
+
+function selectCustomerSource(src, el){
+  _editCustomerSource = src;
+  document.querySelectorAll('[data-source]').forEach(b=>b.classList.toggle('active', b.dataset.source===src));
+  document.getElementById('agentNameRow').style.display = src==='agent' ? 'block' : 'none';
+}
+
+function editCustomer(phone){
+  const c = buildCustomerDb().find(c=>c.phone===phone) || { phone };
+  document.getElementById('editCustomerPhone').value     = phone;
+  document.getElementById('editCustomerPhoneShow').value = phone;
+  document.getElementById('editCustomerName').value      = c.name  || '';
+  document.getElementById('editCustomerNote').value      = c.note  || '';
+  document.getElementById('editCustomerAgent').value     = c.agent || '';
+  _editCustomerSource = c.source || 'direct';
+  document.querySelectorAll('[data-source]').forEach(b=>b.classList.toggle('active', b.dataset.source===_editCustomerSource));
+  document.getElementById('agentNameRow').style.display = _editCustomerSource==='agent' ? 'block' : 'none';
+  openModal('modalEditCustomer');
+  setTimeout(()=>document.getElementById('editCustomerName').focus(), 200);
+}
+
+function saveCustomerProfile(){
+  const phone  = document.getElementById('editCustomerPhone').value;
+  const name   = document.getElementById('editCustomerName').value.trim();
+  const note   = document.getElementById('editCustomerNote').value.trim();
+  const agent  = document.getElementById('editCustomerAgent').value.trim();
+  const source = _editCustomerSource;
+  if(source==='agent' && !agent) return showToast('Ingiza jina la agent','error');
+
+  const profiles = getCustomerProfiles();
+  const idx = profiles.findIndex(p=>p.phone===phone);
+  const profile = { phone, name, note, source, agent, addedAt: idx>=0 ? profiles[idx].addedAt : new Date().toISOString() };
+  if(idx>=0) profiles[idx] = profile;
+  else profiles.push(profile);
+  saveCustomerProfiles(profiles);
+  closeModal('modalEditCustomer');
+  showToast(`✓ Taarifa za ${name||phone} zimehifadhiwa`,'success');
+  renderCustomers();
+}
+
+function viewCustomer(phone){
+  const c = buildCustomerDb().find(c=>c.phone===phone) || { phone };
+  const sales = getSales().filter(s=>s.buyerPhone===phone).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const el = document.getElementById('viewCustomerContent');
+
+  const sourceLine = c.source==='agent'
+    ? `<span style="color:var(--warning)">🤝 Wa Agent${c.agent?' ('+c.agent+')':''}</span>`
+    : `<span style="color:var(--accent)">👤 Mteja Wangu</span>`;
+
+  el.innerHTML=`
+    <div style="background:var(--bg3);border-radius:10px;padding:1rem;margin-bottom:1rem">
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:.3rem">${c.name||'—'} <span style="font-size:.85rem;color:var(--text2);font-weight:400">${c.phone}</span></div>
+      <div style="font-size:.83rem;color:var(--text2);margin-bottom:.25rem">Chanzo: ${sourceLine}</div>
+      ${c.note?`<div style="font-size:.82rem;color:var(--text2)">📝 ${c.note}</div>`:''}
+    </div>
+    <div class="stat-grid" style="margin-bottom:1rem">
+      <div class="stat-card"><div class="stat-label">Mauzo</div><div class="stat-value">${c.count||0}</div></div>
+      <div class="stat-card success"><div class="stat-label">Jumla</div><div class="stat-value">${fmt(c.totalSpent||0)}</div></div>
+    </div>
+    <div class="section-title">Historia ya Mauzo</div>
+    ${sales.length ? sales.map(s=>{
+      const rev=s.sellingPrice??s.amount??0;
+      return`<div class="list-item" style="margin-bottom:.5rem">
+        <div class="list-item-left">
+          <div class="li-title">${s.mb||'—'} · ${s.lineName||'—'}</div>
+          <div class="li-sub">${fmtDateTime(s.date)}</div>
+        </div>
+        <div class="list-item-right">
+          <div class="li-amount">${fmt(rev)}</div>
+          <span class="li-badge ${s.type}">${s.type==='week'?'Wiki':'Mwezi'}</span>
+        </div>
+      </div>`;
+    }).join('') : '<div class="empty-state">Hakuna historia ya mauzo</div>'}
+    <div style="margin-top:1rem;display:flex;gap:.5rem">
+      <button class="btn btn-ghost btn-full" onclick="closeModal('modalViewCustomer');editCustomer('${phone}')">✏️ Hariri</button>
+      <button class="btn btn-danger" onclick="closeModal('modalViewCustomer');deleteCustomer('${phone}')">🗑 Futa</button>
+    </div>`;
+  openModal('modalViewCustomer');
+}
+
+function deleteCustomer(phone){
+  const c = buildCustomerDb().find(c=>c.phone===phone);
+  const name = c?.name || phone;
+  document.getElementById('confirmMessage').textContent =
+    `Futa mteja "${name}" kutoka orodha? Mauzo yake yatabaki lakini profile itafutwa.`;
+  document.getElementById('confirmBtn').onclick = ()=>{
+    const profiles = getCustomerProfiles().filter(p=>p.phone!==phone);
+    saveCustomerProfiles(profiles);
+    closeModal('modalConfirm');
+    showToast(`✓ ${name} amefutwa`,'success');
+    renderCustomers();
+  };
+  openModal('modalConfirm');
+}
+
 function downloadCustomers(){
   const customers = buildCustomerDb();
   if(!customers.length) return showToast('Hakuna wateja wa kupakua','error');
-
-  // Jenga CSV
   const rows = [
-    ['#','Namba ya Simu','Mauzo','Jumla Iliyotumika','Tarehe ya Kwanza','Tarehe ya Mwisho'],
+    ['#','Jina','Namba ya Simu','Chanzo','Agent','Mauzo','Jumla (TSh)','Tarehe ya Kwanza','Tarehe ya Mwisho','Maelezo'],
     ...customers.map((c,i)=>[
       i+1,
+      c.name||'',
       c.phone,
-      c.count,
-      Math.round(c.totalSpent),
-      c.firstDate ? c.firstDate.split('T')[0] : '',
-      c.lastDate  ? c.lastDate.split('T')[0]  : ''
+      c.source==='agent'?'Agent':'Mteja Wangu',
+      c.agent||'',
+      c.count||0,
+      Math.round(c.totalSpent||0),
+      c.firstDate?c.firstDate.split('T')[0]:'',
+      c.lastDate ?c.lastDate.split('T')[0] :'',
+      c.note||''
     ])
   ];
-
-  const csv = rows.map(r=>r.join(',')).join('\n');
+  const csv  = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
   const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `wateja-smartbundles-${todayStr()}.csv`;
-  a.click();
+  a.href=url; a.download=`wateja-smartbundles-${todayStr()}.csv`; a.click();
   URL.revokeObjectURL(url);
-  showToast(`✓ Wateja ${customers.length} wamepakuliwa (CSV)`,'success');
+  showToast(`✓ Wateja ${customers.length} wamepakuliwa`,'success');
 }
 
 // ============================================================
