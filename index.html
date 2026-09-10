@@ -293,6 +293,8 @@ canvas{display:block;width:100%!important}
           <div class="stat-card"><div class="stat-label">Mapato Leo</div><div class="stat-value" id="statTodaySales">TSh 0</div><div class="stat-note" id="statTodayCount">0 mauzo</div></div>
           <div class="stat-card success"><div class="stat-label">Faida Leo</div><div class="stat-value" id="statTodayProfit">TSh 0</div><div class="stat-note" id="statTodayCost">Gharama: TSh 0</div></div>
           <div class="stat-card success"><div class="stat-label">Faida Jumla (Zote)</div><div class="stat-value" id="statAllTimeProfit">TSh 0</div><div class="stat-note" id="statAllTimeReinvest">Mzunguko: TSh 0</div></div>
+          <div class="stat-card"><div class="stat-label">GB Leo</div><div class="stat-value" id="statGbToday">0 GB</div><div class="stat-note" id="statMbToday">0 MB</div></div>
+          <div class="stat-card accent"><div class="stat-label">GB Jumla (Zote)</div><div class="stat-value" id="statGbAll">0 GB</div><div class="stat-note" id="statMbAll">Tangu mwanzo</div></div>
           <div class="stat-card"><div class="stat-label">Idadi ya Laini</div><div class="stat-value" id="statLineCount">0</div><div class="stat-note">Laini zilizosajiliwa</div></div>
           <div class="stat-card warning"><div class="stat-label">Laini Zimejaa</div><div class="stat-value" id="statFullLines">0</div><div class="stat-note">Slots zote zimekwisha</div></div>
           <div class="stat-card danger" id="statLoansCard" style="border-color:rgba(239,68,68,.3);display:none"><div class="stat-label">⚠️ Wadeni</div><div class="stat-value" id="statLoansCount" style="color:var(--danger)">0</div><div class="stat-note" id="statLoansAmt">Hawajalipa: TSh 0</div></div>
@@ -312,7 +314,13 @@ canvas{display:block;width:100%!important}
       </div>
 
       <!-- STATS -->
-      <div class="stat-grid" style="margin-bottom:1.5rem" id="customerStats"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+        <div class="section-title" style="margin:0;border:none;padding:0">Takwimu za Wateja</div>
+        <button class="btn btn-ghost btn-sm" onclick="toggleProfitView()" style="font-size:.8rem">
+          👁 <span id="custEyeLabel">Ona Mapato</span>
+        </button>
+      </div>
+      <div id="customerStats" style="margin-bottom:1.5rem"></div>
 
       <!-- SEARCH -->
       <div style="margin-bottom:1rem">
@@ -1823,6 +1831,10 @@ function showProfitInfo(){
   if(rptUnlocked) rptUnlocked.style.display='block';
   if(rptEyeBtn)   rptEyeBtn.style.color='var(--accent)';
   if(rptEyeLabel) rptEyeLabel.textContent='Ficha Ripoti';
+  // Wateja
+  const custEyeLbl = document.getElementById('custEyeLabel');
+  if(custEyeLbl) custEyeLbl.textContent='Ficha Mapato';
+  if(document.getElementById('page-customers')?.classList.contains('active')) renderCustomers();
   // Calculator
   const calcLocked  = document.getElementById('calcResultLocked');
   const calcRecLock = document.getElementById('calcRecordsLocked');
@@ -1874,6 +1886,10 @@ function hideProfitInfo(){
   if(rptUnlocked) rptUnlocked.style.display='none';
   if(rptEyeBtn)   rptEyeBtn.style.color='';
   if(rptEyeLabel) rptEyeLabel.textContent='Ona Ripoti';
+  // Wateja
+  const custEyeLbl2 = document.getElementById('custEyeLabel');
+  if(custEyeLbl2) custEyeLbl2.textContent='Ona Mapato';
+  if(document.getElementById('page-customers')?.classList.contains('active')) renderCustomers();
   // Calculator
   const calcLocked2  = document.getElementById('calcResultLocked');
   const calcRecLock2 = document.getElementById('calcRecordsLocked');
@@ -2233,6 +2249,18 @@ function renderDashboard(){
   document.getElementById('statTodayCost').textContent=profitVisible?'Gharama: '+fmt(totalCost):'Gharama: ••••';
   document.getElementById('statLineCount').textContent=lines.length;
   document.getElementById('statFullLines').textContent=fullLines.length;
+  // GB zilizouzwa
+  const todayMb = ts.reduce((s,t)=>s+(t.sellMb||0),0);
+  const allMb   = getSales().reduce((s,t)=>s+(t.sellMb||0),0);
+  const fmtGb   = mb => mb>=1024 ? (mb/1024).toFixed(1)+' GB' : Math.round(mb)+' MB';
+  const gbTodayEl = document.getElementById('statGbToday');
+  const gbAllEl   = document.getElementById('statGbAll');
+  const mbTodayEl = document.getElementById('statMbToday');
+  const mbAllEl   = document.getElementById('statMbAll');
+  if(gbTodayEl) gbTodayEl.textContent = fmtGb(todayMb);
+  if(gbAllEl)   gbAllEl.textContent   = fmtGb(allMb);
+  if(mbTodayEl) mbTodayEl.textContent = Math.round(todayMb)+' MB leo';
+  if(mbAllEl)   mbAllEl.textContent   = Math.round(allMb)+' MB jumla';
   const ap=document.getElementById('statAllTimeProfit');
   const ar=document.getElementById('statAllTimeReinvest');
   if(ap){ap.textContent=fmtMB(totalMbWeek+totalMbMonth);ap.style.fontSize='1.1rem';}
@@ -3523,11 +3551,13 @@ function renderCustomers(){
     const totalSpent = customers.reduce((s,c)=>s+c.totalSpent,0);
     const repeat     = customers.filter(c=>c.count>1).length;
     const agents     = customers.filter(c=>c.source==='agent').length;
-    statsEl.innerHTML=`
+    const H = '••••';
+    statsEl.innerHTML=`<div class="stat-grid">
       <div class="stat-card accent"><div class="stat-label">Wateja Wote</div><div class="stat-value">${customers.length}</div><div class="stat-note">Namba tofauti</div></div>
       <div class="stat-card"><div class="stat-label">Wanaorudi Tena</div><div class="stat-value">${repeat}</div><div class="stat-note">Wamenunua 2+ mara</div></div>
-      <div class="stat-card success"><div class="stat-label">Jumla ya Mapato</div><div class="stat-value">${fmt(totalSpent)}</div><div class="stat-note">Kutoka wateja wote</div></div>
-      <div class="stat-card"><div class="stat-label">Wa Agent</div><div class="stat-value">${agents}</div><div class="stat-note">Waliletwa na agent</div></div>`;
+      <div class="stat-card success"><div class="stat-label">Jumla ya Mapato</div><div class="stat-value">${profitVisible?fmt(totalSpent):H}</div><div class="stat-note">Kutoka wateja wote</div></div>
+      <div class="stat-card"><div class="stat-label">Wa Agent</div><div class="stat-value">${agents}</div><div class="stat-note">Waliletwa na agent</div></div>
+    </div>`;
   }
 
   const listEl = document.getElementById('customerList');
