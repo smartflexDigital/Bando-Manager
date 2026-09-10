@@ -246,6 +246,7 @@ canvas{display:block;width:100%!important}
   <nav class="sidebar">
     <button class="nav-btn active" data-page="dashboard"><span class="nav-icon">🏠</span><span>Dashibodi</span></button>
     <button class="nav-btn" data-page="finder" style="background:rgba(0,196,167,.08);border-left:3px solid var(--accent)"><span class="nav-icon">🎯</span><span>Pata Laini</span></button>
+    <button class="nav-btn" data-page="customers"><span class="nav-icon">👥</span><span>Wateja</span></button>
     <button class="nav-btn" data-page="lines"><span class="nav-icon">📱</span><span>Laini</span></button>
     <button class="nav-btn" data-page="sell"><span class="nav-icon">💸</span><span>Uza Bando</span></button>
     <button class="nav-btn" data-page="calc"><span class="nav-icon">🧮</span><span>Calculator</span></button>
@@ -299,6 +300,29 @@ canvas{display:block;width:100%!important}
         <div class="section-title">Hali ya Laini Leo</div>
         <div class="lines-grid" id="dashboardLines"></div>
       </div>
+    </section>
+
+    <!-- WATEJA -->
+    <section class="page" id="page-customers">
+      <div class="page-header">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+          <div><h1>👥 Wateja Wangu</h1><p class="page-sub">Orodha ya wateja wote waliowahi kununua</p></div>
+          <button class="btn btn-ghost btn-sm" onclick="downloadCustomers()">⬇️ Download CSV</button>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="stat-grid" style="margin-bottom:1.5rem" id="customerStats"></div>
+
+      <!-- SEARCH -->
+      <div style="margin-bottom:1rem">
+        <input type="text" id="customerSearch" placeholder="🔍 Tafuta namba ya simu..."
+          style="width:100%;max-width:400px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.5rem .85rem;font-size:.85rem;color:var(--text);font-family:var(--font)"
+          oninput="renderCustomers()"/>
+      </div>
+
+      <!-- LIST -->
+      <div id="customerList"></div>
     </section>
 
     <!-- SMART LINE FINDER -->
@@ -3381,6 +3405,109 @@ async function sendDailyReportSms(){
 }
 
 // ============================================================
+// WATEJA — CUSTOMER DATABASE
+// ============================================================
+function buildCustomerDb(){
+  const sales = getSales();
+  const db    = {}; // phone → {phone, count, totalSpent, firstDate, lastDate}
+
+  sales.forEach(s=>{
+    if(!s.buyerPhone) return;
+    const phone = s.buyerPhone.trim();
+    if(!phone) return;
+    const rev = s.sellingPrice ?? s.amount ?? 0;
+    const dt  = s.date || '';
+    if(!db[phone]){
+      db[phone] = {phone, count:0, totalSpent:0, firstDate:dt, lastDate:dt};
+    }
+    db[phone].count++;
+    db[phone].totalSpent += rev;
+    if(dt < db[phone].firstDate) db[phone].firstDate = dt;
+    if(dt > db[phone].lastDate)  db[phone].lastDate  = dt;
+  });
+
+  // Panga kwa mara nyingi zaidi kwanza
+  return Object.values(db).sort((a,b)=>b.count - a.count);
+}
+
+function renderCustomers(){
+  const customers = buildCustomerDb();
+  const q = (document.getElementById('customerSearch')?.value||'').toLowerCase().trim();
+  const filtered = q ? customers.filter(c=>c.phone.includes(q)) : customers;
+
+  // Stats
+  const statsEl = document.getElementById('customerStats');
+  if(statsEl){
+    const totalSpent = customers.reduce((s,c)=>s+c.totalSpent,0);
+    const repeat     = customers.filter(c=>c.count>1).length;
+    statsEl.innerHTML=`
+      <div class="stat-card accent"><div class="stat-label">Wateja Wote</div><div class="stat-value">${customers.length}</div><div class="stat-note">Namba tofauti</div></div>
+      <div class="stat-card"><div class="stat-label">Wanunuzi wa Mara kwa Mara</div><div class="stat-value">${repeat}</div><div class="stat-note">Wamenunua 2+ mara</div></div>
+      <div class="stat-card success"><div class="stat-label">Jumla ya Mapato</div><div class="stat-value">${fmt(totalSpent)}</div><div class="stat-note">Kutoka wateja wote</div></div>`;
+  }
+
+  // List
+  const listEl = document.getElementById('customerList');
+  if(!listEl) return;
+
+  if(!filtered.length){
+    listEl.innerHTML = q
+      ? `<div class="empty-state">Hakuna mteja mwenye namba "${q}"</div>`
+      : `<div class="empty-state">Hakuna wateja bado — anza kurekodi mauzo na namba za wateja</div>`;
+    return;
+  }
+
+  listEl.innerHTML = filtered.map((c,i)=>{
+    const repeatBadge = c.count > 1
+      ? `<span style="font-size:.65rem;font-weight:700;padding:.12rem .4rem;border-radius:4px;background:rgba(0,196,167,.15);color:var(--accent);margin-left:.35rem">⭐ Mstari wa ${c.count}x</span>`
+      : '';
+    return`<div class="list-item" style="cursor:pointer" onclick="showCustomerHistory('${c.phone}')">
+      <div class="list-item-left">
+        <div class="li-title" style="display:flex;align-items:center;gap:.35rem">
+          <span style="font-size:.8rem;color:var(--text3);font-weight:400">#${i+1}</span>
+          📱 ${c.phone}${repeatBadge}
+        </div>
+        <div class="li-sub">
+          Kwanza: ${fmtDateTime(c.firstDate)} · Mwisho: ${fmtDateTime(c.lastDate)}
+        </div>
+      </div>
+      <div class="list-item-right">
+        <div class="li-amount">${fmt(c.totalSpent)}</div>
+        <div style="font-size:.75rem;color:var(--text2)">${c.count} mauzo</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function downloadCustomers(){
+  const customers = buildCustomerDb();
+  if(!customers.length) return showToast('Hakuna wateja wa kupakua','error');
+
+  // Jenga CSV
+  const rows = [
+    ['#','Namba ya Simu','Mauzo','Jumla Iliyotumika','Tarehe ya Kwanza','Tarehe ya Mwisho'],
+    ...customers.map((c,i)=>[
+      i+1,
+      c.phone,
+      c.count,
+      Math.round(c.totalSpent),
+      c.firstDate ? c.firstDate.split('T')[0] : '',
+      c.lastDate  ? c.lastDate.split('T')[0]  : ''
+    ])
+  ];
+
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `wateja-smartbundles-${todayStr()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`✓ Wateja ${customers.length} wamepakuliwa (CSV)`,'success');
+}
+
+// ============================================================
 // SMART LINE FINDER
 // ============================================================
 const WIKI_GB_MAX  = 5;
@@ -3521,6 +3648,7 @@ function navigateTo(page){
   if(page==='balance'){updateBalancePage();updateBalancePreview()}
   if(page==='reports')renderReports();
   if(page==='loans'){renderLoans();}
+  if(page==='customers'){ renderCustomers(); }
   if(page==='finder'){ finderBuildGbBtns(); document.getElementById('finderResult').innerHTML=''; document.getElementById('finderMbInput').value=''; }
   if(page==='settings'){
     document.getElementById('settingPinLen').textContent=PIN_LENGTH+' namba';
