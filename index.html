@@ -914,6 +914,18 @@ canvas{display:block;width:100%!important}
     <div class="form-group"><label>Jina la Laini</label><input type="text" id="lineName" placeholder="e.g. Laini 1 - Tigo"/></div>
     <div class="form-group"><label>Nambari ya Simu</label><input type="text" id="linePhone" placeholder="e.g. 0712345678"/></div>
     <div class="form-group"><label>Salio la Awali (TSh) — weka 0</label><input type="number" id="lineBalance" placeholder="0" min="0"/></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>📅 Tarehe ya Kusajiliwa</label>
+        <input type="date" id="lineRegDate" oninput="onLineRegDateChange()"/>
+        <div style="font-size:.72rem;color:var(--text3);margin-top:.25rem">Ikiachwa wazi — itaweka tarehe ya leo</div>
+      </div>
+      <div class="form-group">
+        <label>⏰ Tarehe ya Kuisha (Expiry)</label>
+        <input type="date" id="lineExpDate"/>
+        <div style="font-size:.72rem;color:var(--text3);margin-top:.25rem" id="lineExpPreview">Itajaza yenyewe (miezi 3)</div>
+      </div>
+    </div>
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem">
       <div style="font-size:.78rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.75rem">📶 MB za Laini (Hiari)</div>
       <div class="form-row">
@@ -1545,21 +1557,40 @@ function quickAddMb(type){
   document.getElementById(field).value = current + add;
 }
 
+function onLineRegDateChange(){
+  const reg = document.getElementById('lineRegDate').value;
+  if(!reg) return;
+  // Jaza expiry — miezi 3 baadaye
+  const exp = new Date(reg+'T12:00:00');
+  exp.setMonth(exp.getMonth() + 3);
+  const expStr = exp.toISOString().split('T')[0];
+  document.getElementById('lineExpDate').value = expStr;
+  const daysLeft = Math.ceil((exp - new Date()) / (1000*60*60*24));
+  const prev = document.getElementById('lineExpPreview');
+  if(prev) prev.textContent = `Itaisha ${expStr} (siku ${daysLeft} zinazoibaki)`;
+}
+
 function saveLine(){
   const id      = document.getElementById('editLineId').value;
   const name    = document.getElementById('lineName').value.trim();
   const phone   = document.getElementById('linePhone').value.trim();
   const mbWeek  = document.getElementById('lineMbWeek').value;
   const mbMonth = document.getElementById('lineMbMonth').value;
+  const regDate = document.getElementById('lineRegDate').value || todayStr();
+  const expDate = document.getElementById('lineExpDate').value || (() => {
+    const d = new Date(regDate+'T12:00:00'); d.setMonth(d.getMonth()+3);
+    return d.toISOString().split('T')[0];
+  })();
   if(!name)  return showToast('Ingiza jina la laini','error');
   if(!phone) return showToast('Ingiza nambari ya simu','error');
   const lines = getLines();
   if(id){
     const idx = lines.findIndex(l=>l.id===id);
     if(idx>=0){
-      lines[idx].name  = name;
-      lines[idx].phone = phone;
-      // Kama mtumiaji ameweka namba — weka exactly hiyo (0 inakubalika)
+      lines[idx].name    = name;
+      lines[idx].phone   = phone;
+      lines[idx].regDate = regDate;
+      lines[idx].expDate = expDate;
       if(mbWeek  !== '') lines[idx].mbWeek  = parseFloat(mbWeek)||0;
       if(mbMonth !== '') lines[idx].mbMonth = parseFloat(mbMonth)||0;
     }
@@ -1569,7 +1600,8 @@ function saveLine(){
       id:uid(), name, phone,
       balance: 0,
       mbWeek:  parseFloat(mbWeek)||0,
-      mbMonth: parseFloat(mbMonth)||0
+      mbMonth: parseFloat(mbMonth)||0,
+      regDate, expDate
     });
     showToast('Laini mpya imeongezwa ✓','success');
   }
@@ -1586,8 +1618,11 @@ function editLine(lineId){
   document.getElementById('linePhone').value=line.phone;
   const bf=document.getElementById('lineBalance');
   bf.value=line.balance||0; bf.disabled=true;
-  bf.title='Badilisha salio kupitia ukurasa wa Ongeza Salio';
-  // Pre-fill MB values — mtumiaji anaweza kubadilisha au kufuta na kuweka 0
+  // Tarehe
+  document.getElementById('lineRegDate').value = line.regDate || todayStr();
+  document.getElementById('lineExpDate').value  = line.expDate || '';
+  onLineRegDateChange();
+  // MB fields
   document.getElementById('lineMbWeek').value  = line.mbWeek  || 0;
   document.getElementById('lineMbMonth').value = line.mbMonth || 0;
   document.getElementById('lineMbWeek').placeholder  = 'e.g. 6556';
@@ -2177,6 +2212,20 @@ function buildLineCard(line,showActions){
       </div>
     </div>` : `<div style="font-size:.75rem;color:var(--text3);margin-bottom:.5rem">Hakuna MB — ongeza bando</div>`;
 
+  // Expiry info
+  let expiryHtml = '';
+  if(line.expDate){
+    const expD    = new Date(line.expDate+'T12:00:00');
+    const today2  = new Date(); today2.setHours(0,0,0,0);
+    const dLeft   = Math.ceil((expD - today2)/(1000*60*60*24));
+    const expCol  = dLeft<=7?'var(--danger)':dLeft<=30?'var(--warning)':'var(--text2)';
+    const expIcon = dLeft<=7?'🔴':dLeft<=30?'🟡':'🟢';
+    const regStr  = line.regDate ? `Ilisajiliwa: ${line.regDate}` : '';
+    expiryHtml = `<div style="font-size:.72rem;margin-top:.4rem;display:flex;justify-content:space-between">
+      <span style="color:var(--text3)">${regStr}</span>
+      <span style="color:${expCol};font-weight:600">${expIcon} Inaisha: ${line.expDate} ${dLeft>0?'(siku '+dLeft+')':'(IMEKWISHA)'}</span>
+    </div>`;
+  }
   const actions=showActions?`<div class="line-actions" style="margin-top:.85rem">
     <button class="btn btn-ghost btn-sm" onclick="editLine('${line.id}')">✏️ Hariri/Ongeza MB</button>
     <button class="btn btn-ghost btn-sm" onclick="resetLineMb('${line.id}')" style="border-color:var(--warning);color:var(--warning)">🔄 Reset MB</button>
@@ -2187,6 +2236,7 @@ function buildLineCard(line,showActions){
       <div><div class="line-card-name">${line.name}</div><div class="line-card-phone">${line.phone}</div></div>
       ${isFull?'<span class="full-badge">FULL</span>':''}
     </div>
+    ${expiryHtml}
     ${mbBar}
     <div class="slots-row" style="margin-top:.5rem">
       <div class="slot-pill"><div class="slot-pill-label">Wiki</div><div class="slot-pill-val ${wUsed>=MAX_WEEK?'full':'ok'}">${wUsed}/${MAX_WEEK}</div><div class="slot-bars">${wb}</div></div>
