@@ -911,9 +911,45 @@ canvas{display:block;width:100%!important}
       <button class="modal-close" onclick="closeModal('modalAddLine')">✕</button>
     </div>
     <input type="hidden" id="editLineId"/>
-    <div class="form-group"><label>Jina la Laini</label><input type="text" id="lineName" placeholder="e.g. Laini 1 - Tigo"/></div>
+    <div class="form-group"><label>Jina la Laini</label><input type="text" id="lineName" placeholder="e.g. RAYA, OSCA, CHARLES"/></div>
     <div class="form-group"><label>Nambari ya Simu</label><input type="text" id="linePhone" placeholder="e.g. 0712345678"/></div>
     <div class="form-group"><label>Salio la Awali (TSh) — weka 0</label><input type="number" id="lineBalance" placeholder="0" min="0"/></div>
+
+    <!-- SIMU NA SIM -->
+    <div class="form-row">
+      <div class="form-group">
+        <label>📱 Simu</label>
+        <select id="lineDevice" onchange="onLineDeviceChange()">
+          <option value="">-- Chagua Simu --</option>
+          <optgroup label="🔧 Zako">
+            <option value="TECNO">TECNO</option>
+            <option value="SWITCH">SWITCH</option>
+          </optgroup>
+          <optgroup label="👷 Mfanyakazi">
+            <option value="OKING">OKING</option>
+            <option value="BLACK MOMOFLY">BLACK MOMOFLY</option>
+            <option value="BLUE MOMOFLY">BLUE MOMOFLY</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>SIM Namba</label>
+        <select id="lineSimNo">
+          <option value="SIM1">SIM1</option>
+          <option value="SIM2">SIM2</option>
+          <option value="SIM3">SIM3</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- MMILIKI -->
+    <div class="form-group">
+      <label>Mmiliki</label>
+      <div class="type-toggle">
+        <button type="button" class="type-btn active" data-owner="self" onclick="selectLineOwner('self',this)">👤 Wangu</button>
+        <button type="button" class="type-btn" data-owner="worker" onclick="selectLineOwner('worker',this)">👷 Mfanyakazi</button>
+      </div>
+    </div>
     <div class="form-row">
       <div class="form-group">
         <label>📅 Tarehe ya Kusajiliwa</label>
@@ -1024,6 +1060,32 @@ canvas{display:block;width:100%!important}
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modalSellSms')">Ruka SMS</button>
       <button class="btn btn-primary" onclick="sendSellSmsFromModal()">📱 Tuma</button>
+    </div>
+  </div>
+</div>
+
+<!-- Order Modal -->
+<div class="modal-overlay" id="modalOrder">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2>📤 Order kwa Mfanyakazi</h2>
+      <button class="modal-close" onclick="closeModal('modalOrder')">✕</button>
+    </div>
+    <div style="font-size:.82rem;color:var(--text2);margin-bottom:.75rem" id="orderLineInfo"></div>
+    <div class="form-group">
+      <label>Namba ya Mteja</label>
+      <input type="text" id="orderBuyerPhone" placeholder="e.g. 0637604108" oninput="updateOrderPreview()"/>
+    </div>
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.85rem;margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <span style="font-size:.78rem;color:var(--text2);font-weight:600">Ujumbe wa Kutuma</span>
+        <button type="button" class="btn btn-ghost btn-sm" style="padding:.15rem .5rem;font-size:.72rem" onclick="copyOrderMsg()">📋 Nakili</button>
+      </div>
+      <div id="orderMsgPreview" style="font-size:.82rem;color:var(--text);line-height:1.7;white-space:pre-wrap;font-family:monospace"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalOrder')">Ghairi</button>
+      <button class="btn btn-primary" onclick="confirmOrder()">✅ Hifadhi Order</button>
     </div>
   </div>
 </div>
@@ -1570,6 +1632,20 @@ function onLineRegDateChange(){
   if(prev) prev.textContent = `Itaisha ${expStr} (siku ${daysLeft} zinazoibaki)`;
 }
 
+let _lineOwner = 'self';
+function selectLineOwner(owner, el){
+  _lineOwner = owner;
+  document.querySelectorAll('[data-owner]').forEach(b=>b.classList.toggle('active', b.dataset.owner===owner));
+}
+function onLineDeviceChange(){
+  const dev = document.getElementById('lineDevice').value;
+  // Auto-set owner based on device
+  const workerDevices = ['OKING','BLACK MOMOFLY','BLUE MOMOFLY'];
+  const owner = workerDevices.includes(dev) ? 'worker' : 'self';
+  selectLineOwner(owner, null);
+  document.querySelectorAll('[data-owner]').forEach(b=>b.classList.toggle('active', b.dataset.owner===owner));
+}
+
 function saveLine(){
   const id      = document.getElementById('editLineId').value;
   const name    = document.getElementById('lineName').value.trim();
@@ -1581,8 +1657,14 @@ function saveLine(){
     const d = new Date(regDate+'T12:00:00'); d.setMonth(d.getMonth()+3);
     return d.toISOString().split('T')[0];
   })();
+  const device  = document.getElementById('lineDevice').value;
+  const simNo   = document.getElementById('lineSimNo').value;
+  const owner   = _lineOwner;
+
   if(!name)  return showToast('Ingiza jina la laini','error');
   if(!phone) return showToast('Ingiza nambari ya simu','error');
+  if(!device) return showToast('Chagua simu','error');
+
   const lines = getLines();
   if(id){
     const idx = lines.findIndex(l=>l.id===id);
@@ -1591,6 +1673,9 @@ function saveLine(){
       lines[idx].phone   = phone;
       lines[idx].regDate = regDate;
       lines[idx].expDate = expDate;
+      lines[idx].device  = device;
+      lines[idx].simNo   = simNo;
+      lines[idx].owner   = owner;
       if(mbWeek  !== '') lines[idx].mbWeek  = parseFloat(mbWeek)||0;
       if(mbMonth !== '') lines[idx].mbMonth = parseFloat(mbMonth)||0;
     }
@@ -1601,7 +1686,7 @@ function saveLine(){
       balance: 0,
       mbWeek:  parseFloat(mbWeek)||0,
       mbMonth: parseFloat(mbMonth)||0,
-      regDate, expDate
+      regDate, expDate, device, simNo, owner
     });
     showToast('Laini mpya imeongezwa ✓','success');
   }
@@ -1622,11 +1707,15 @@ function editLine(lineId){
   document.getElementById('lineRegDate').value = line.regDate || todayStr();
   document.getElementById('lineExpDate').value  = line.expDate || '';
   onLineRegDateChange();
-  // MB fields
+  // Device na SIM
+  document.getElementById('lineDevice').value = line.device || '';
+  document.getElementById('lineSimNo').value  = line.simNo  || 'SIM1';
+  // Owner
+  _lineOwner = line.owner || 'self';
+  document.querySelectorAll('[data-owner]').forEach(b=>b.classList.toggle('active', b.dataset.owner===_lineOwner));
+  // MB
   document.getElementById('lineMbWeek').value  = line.mbWeek  || 0;
   document.getElementById('lineMbMonth').value = line.mbMonth || 0;
-  document.getElementById('lineMbWeek').placeholder  = 'e.g. 6556';
-  document.getElementById('lineMbMonth').placeholder = 'e.g. 13112';
   openModal('modalAddLine');
 }
 
@@ -2212,8 +2301,13 @@ function buildLineCard(line,showActions){
       </div>
     </div>` : `<div style="font-size:.75rem;color:var(--text3);margin-bottom:.5rem">Hakuna MB — ongeza bando</div>`;
 
-  // Expiry info
-  let expiryHtml = '';
+  // Device/SIM/Owner badge
+  const ownerBadge = line.owner==='worker'
+    ? `<span style="font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;background:rgba(251,191,36,.15);color:var(--warning)">👷 Mfanyakazi</span>`
+    : `<span style="font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;background:rgba(0,196,167,.12);color:var(--accent)">👤 Wangu</span>`;
+  const deviceBadge = line.device
+    ? `<span style="font-size:.65rem;padding:.1rem .4rem;border-radius:4px;background:var(--bg3);color:var(--text2);margin-left:.3rem">${line.simNo||'SIM1'} · ${line.device}</span>`
+    : '';
   if(line.expDate){
     const expD    = new Date(line.expDate+'T12:00:00');
     const today2  = new Date(); today2.setHours(0,0,0,0);
@@ -2233,7 +2327,12 @@ function buildLineCard(line,showActions){
   </div>`:'';
   return`<div class="line-card${isFull?' full':''}">
     <div class="line-card-header">
-      <div><div class="line-card-name">${line.name}</div><div class="line-card-phone">${line.phone}</div></div>
+      <div>
+        <div class="line-card-name">${line.name}</div>
+        <div class="line-card-phone" style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;margin-top:.2rem">
+          ${line.phone}${deviceBadge}${ownerBadge}
+        </div>
+      </div>
       ${isFull?'<span class="full-badge">FULL</span>':''}
     </div>
     ${expiryHtml}
@@ -3772,6 +3871,114 @@ function downloadCustomers(){
 }
 
 // ============================================================
+// ORDER SYSTEM
+// ============================================================
+let _orderCounter = parseInt(localStorage.getItem('bm_order_counter')||'0');
+let _pendingOrder = null;
+
+function nextOrderNo(){
+  _orderCounter++;
+  localStorage.setItem('bm_order_counter', _orderCounter);
+  return String(_orderCounter).padStart(3,'0');
+}
+
+function openOrderModal(lineId, type, mb){
+  const line = getLines().find(l=>l.id===lineId);
+  if(!line) return;
+  const mbLabel = fmtMB(mb);
+  const typeLabel = type==='week'?'WIKI':'MWEZI';
+  const orderNo = nextOrderNo();
+
+  _pendingOrder = { lineId, type, mb, mbLabel, orderNo, line };
+
+  // Info juu
+  const infoEl = document.getElementById('orderLineInfo');
+  if(infoEl) infoEl.innerHTML = `
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <span style="font-weight:600">${line.name}</span>
+      <span style="color:var(--text2)">${line.simNo||'SIM1'} · ${line.device||'—'}</span>
+      <span style="color:var(--accent)">${mbLabel} (${typeLabel})</span>
+    </div>`;
+
+  // Preview ujumbe
+  updateOrderPreview();
+  openModal('modalOrder');
+  setTimeout(()=>document.getElementById('orderBuyerPhone').focus(), 200);
+}
+
+function updateOrderPreview(){
+  if(!_pendingOrder) return;
+  const {line, mbLabel, orderNo} = _pendingOrder;
+  const typeLabel = _pendingOrder.type==='week'?'WIKI':'MWEZI';
+  const phone = document.getElementById('orderBuyerPhone')?.value.trim() || '—';
+  const msg = `🔔 ORDER #${orderNo}\n━━━━━━━━━━━━\n📦 MB: ${_pendingOrder.mb} (${typeLabel})\n📱 Laini: ${line.simNo||'SIM1'} - ${line.device||'—'}\n👤 Namba: ${phone}\n━━━━━━━━━━━━`;
+  const el = document.getElementById('orderMsgPreview');
+  if(el) el.textContent = msg;
+  _pendingOrder.msg = msg;
+}
+
+function copyOrderMsg(){
+  if(!_pendingOrder?.msg) return;
+  // Update phone before copying
+  updateOrderPreview();
+  navigator.clipboard?.writeText(_pendingOrder.msg)
+    .then(()=>showToast('✓ Ujumbe umenakiliwa — tuma kwa mfanyakazi!','success'))
+    .catch(()=>{
+      // Fallback
+      const ta = document.createElement('textarea');
+      ta.value = _pendingOrder.msg;
+      document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('✓ Ujumbe umenakiliwa!','success');
+    });
+}
+
+function confirmOrder(){
+  const phone = document.getElementById('orderBuyerPhone').value.trim();
+  if(!phone) return showToast('Ingiza namba ya mteja kwanza','error');
+  updateOrderPreview();
+  copyOrderMsg();
+  // Hifadhi order inayosubiri — itakamilishwa ukisema Done
+  const orders = JSON.parse(localStorage.getItem('bm_pending_orders')||'[]');
+  orders.push({
+    orderNo: _pendingOrder.orderNo,
+    lineId: _pendingOrder.lineId,
+    type: _pendingOrder.type,
+    mb: _pendingOrder.mb,
+    mbLabel: _pendingOrder.mbLabel,
+    buyerPhone: phone,
+    lineName: _pendingOrder.line.name,
+    lineDevice: _pendingOrder.line.device,
+    lineSimNo: _pendingOrder.line.simNo,
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  });
+  localStorage.setItem('bm_pending_orders', JSON.stringify(orders));
+  closeModal('modalOrder');
+  showToast(`✓ Order #${_pendingOrder.orderNo} imetumwa — subiri DONE kutoka mfanyakazi`,'success');
+  // Angalia pending orders badge
+  renderPendingOrdersBadge();
+}
+
+function renderPendingOrdersBadge(){
+  const orders = JSON.parse(localStorage.getItem('bm_pending_orders')||'[]');
+  const pending = orders.filter(o=>o.status==='pending');
+  // Onyesha badge kwenye sidebar
+  const finderBtn = document.querySelector('[data-page="finder"]');
+  if(finderBtn){
+    let badge = finderBtn.querySelector('.order-badge');
+    if(pending.length){
+      if(!badge){ badge=document.createElement('span'); badge.className='order-badge';
+        badge.style.cssText='background:var(--danger);color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .35rem;border-radius:10px;margin-left:auto';
+        finderBtn.appendChild(badge);
+      }
+      badge.textContent = pending.length;
+    } else if(badge){ badge.remove(); }
+  }
+}
+
+// ============================================================
 // SMART LINE FINDER
 // ============================================================
 const WIKI_GB_MAX  = 5;
@@ -3873,8 +4080,15 @@ function renderFinderResult(candidates, mb, preferredType, usedFallback){
         <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:3px"></div>
       </div>
       <button class="btn btn-primary btn-full" onclick="useFinderLine('${best.line.id}','${best.type}',${mb})">
-        💸 Tumia Laini Hii → Nenda Uza Bando
+        💸 Fanya Mwenyewe → Nenda Uza Bando
       </button>
+      ${best.line.owner==='worker'?`
+      <button class="btn btn-ghost btn-full" style="margin-top:.5rem;border-color:var(--warning);color:var(--warning)" onclick="openOrderModal('${best.line.id}','${best.type}',${mb})">
+        📤 Tuma Order kwa Mfanyakazi
+      </button>`:`
+      <button class="btn btn-ghost btn-full" style="margin-top:.5rem" onclick="openOrderModal('${best.line.id}','${best.type}',${mb})">
+        📤 Tuma Order kwa Mfanyakazi
+      </button>`}
     </div>
     ${others.length?`
     <div style="font-size:.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Chaguzi Nyingine</div>
@@ -3942,6 +4156,7 @@ function initApp(){
   navigateTo('dashboard');
   checkLoanReminders();
   scheduleDailyReport();
+  renderPendingOrdersBadge();
 }
 initLock();
 </script>
