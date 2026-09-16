@@ -246,6 +246,7 @@ canvas{display:block;width:100%!important}
   <nav class="sidebar">
     <button class="nav-btn active" data-page="dashboard"><span class="nav-icon">🏠</span><span>Dashibodi</span></button>
     <button class="nav-btn" data-page="finder" style="background:rgba(0,196,167,.08);border-left:3px solid var(--accent)"><span class="nav-icon">🎯</span><span>Pata Laini</span></button>
+    <button class="nav-btn" data-page="orders"><span class="nav-icon">📋</span><span>Orders <span id="ordersNavBadge" style="display:none;background:var(--danger);color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .35rem;border-radius:10px;margin-left:.2rem">0</span></span></button>
     <button class="nav-btn" data-page="customers"><span class="nav-icon">👥</span><span>Wateja</span></button>
     <button class="nav-btn" data-page="lines"><span class="nav-icon">📱</span><span>Laini</span></button>
     <button class="nav-btn" data-page="sell"><span class="nav-icon">💸</span><span>Uza Bando</span></button>
@@ -331,6 +332,17 @@ canvas{display:block;width:100%!important}
 
       <!-- LIST -->
       <div id="customerList"></div>
+    </section>
+
+    <!-- ORDERS ZINAZONGOJA -->
+    <section class="page" id="page-orders">
+      <div class="page-header">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><h1>📋 Orders Zinazongoja</h1><p class="page-sub">Confirm ukipata "Done" kutoka mfanyakazi</p></div>
+          <button class="btn btn-ghost btn-sm" onclick="confirmAllOrders()" style="border-color:var(--success);color:var(--success)">✅ Confirm Zote</button>
+        </div>
+      </div>
+      <div id="ordersList"></div>
     </section>
 
     <!-- SMART LINE FINDER -->
@@ -856,7 +868,14 @@ canvas{display:block;width:100%!important}
       </div>
 
       <div class="form-card" style="max-width:420px;margin-top:1rem">
-        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:1rem">👁 PIN ya Kuona Faida</div>
+        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:1rem">🔔 Order Number — Reset</div>
+        <p style="font-size:.83rem;color:var(--text2);margin-bottom:1rem">Order za sasa zinaendelea kuhesabu. Ukitaka kuanza upya #001 — bonyeza Reset hapa chini.</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg3);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem">
+          <span style="font-size:.85rem;color:var(--text2)">Order ya Sasa</span>
+          <span style="font-weight:700;font-size:1.1rem" id="currentOrderNo">#000</span>
+        </div>
+        <button class="btn btn-ghost btn-full" style="border-color:var(--warning);color:var(--warning)" onclick="resetOrderCounter()">🔄 Reset Order Counter → #001</button>
+      </div>
         <p style="font-size:.83rem;color:var(--text2);margin-bottom:1rem">PIN hii (namba 4) inatumika kuona taarifa za faida — tofauti na PIN ya kufungulia mfumo.</p>
         <div class="form-group">
           <label>PIN ya Sasa ya Faida</label>
@@ -1343,6 +1362,22 @@ function showPinMsg(msg, ok){
   el.style.color=ok?'var(--success)':'var(--danger)';
   el.textContent=msg;
   if(ok) setTimeout(()=>el.style.display='none', 3000);
+}
+
+function resetOrderCounter(){
+  document.getElementById('confirmMessage').textContent =
+    'Reset order counter? Order inayofuata itakuwa #001.';
+  document.getElementById('confirmBtn').onclick = ()=>{
+    _orderCounter = 0;
+    localStorage.setItem('bm_order_counter','0');
+    localStorage.setItem('bm_pending_orders','[]');
+    closeModal('modalConfirm');
+    showToast('✓ Order counter imewekwa upya — inayofuata: #001','success');
+    renderPendingOrdersBadge();
+    const el = document.getElementById('currentOrderNo');
+    if(el) el.textContent = '#000';
+  };
+  openModal('modalConfirm');
 }
 
 function saveBossPhone(){
@@ -3871,6 +3906,182 @@ function downloadCustomers(){
 }
 
 // ============================================================
+// ORDERS PAGE
+// ============================================================
+function getPendingOrders(){
+  return JSON.parse(localStorage.getItem('bm_pending_orders')||'[]');
+}
+function savePendingOrders(orders){
+  localStorage.setItem('bm_pending_orders', JSON.stringify(orders));
+}
+
+function renderOrdersPage(){
+  const orders  = getPendingOrders();
+  const pending = orders.filter(o=>o.status==='pending');
+  const done    = orders.filter(o=>o.status==='done').slice(-10).reverse();
+  const el      = document.getElementById('ordersList');
+  if(!el) return;
+
+  if(!pending.length && !done.length){
+    el.innerHTML=`<div class="empty-state">Hakuna orders kwa sasa — tuma order kwanza kupitia "Pata Laini"</div>`;
+    return;
+  }
+
+  let html = '';
+
+  // Pending orders
+  if(pending.length){
+    html += `<div class="section-title" style="margin-bottom:.75rem">⏳ Zinasubiri Confirm (${pending.length})</div>`;
+    html += pending.map(o=>`
+      <div style="background:var(--bg2);border:1.5px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:.75rem">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem">
+          <div>
+            <div style="font-size:1rem;font-weight:700;color:var(--accent)">ORDER #${o.orderNo}</div>
+            <div style="font-size:.8rem;color:var(--text2);margin-top:.2rem">${fmtDateTime(o.createdAt)}</div>
+          </div>
+          <span style="font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:6px;background:rgba(251,191,36,.15);color:var(--warning)">⏳ Inasubiri</span>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:.7rem;font-size:.82rem;line-height:1.8;margin-bottom:.85rem;font-family:monospace">
+🔔 ORDER #${o.orderNo}
+━━━━━━━━━━━━
+📦 MB: ${o.mb} (${o.type==='week'?'WIKI':'MWEZI'})
+📱 Laini: ${o.lineSimNo||'—'} - ${o.lineDevice||'—'}
+👤 Namba: ${o.buyerPhone}
+━━━━━━━━━━━━</div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-ghost btn-sm" style="flex:1" onclick="copyPendingOrder('${o.orderNo}')">📋 Nakili Tena</button>
+          <button class="btn btn-success" style="flex:2" onclick="confirmSingleOrder('${o.orderNo}')">✅ Done — Confirm</button>
+          <button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.orderNo}')">✕</button>
+        </div>
+      </div>`).join('');
+  }
+
+  // Done orders (historia)
+  if(done.length){
+    html += `<div class="section-title" style="margin-top:1.5rem;margin-bottom:.75rem">✅ Zilizokamilika (Hivi Karibuni)</div>`;
+    html += done.map(o=>`
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:.5rem;opacity:.7">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:600">ORDER #${o.orderNo} <span style="font-size:.7rem;color:var(--success)">✅ Done</span></div>
+            <div style="font-size:.78rem;color:var(--text2)">${o.mb}MB · ${o.lineSimNo||'—'} ${o.lineDevice||'—'} · ${o.buyerPhone}</div>
+          </div>
+          <div style="font-size:.75rem;color:var(--text3)">${fmtDateTime(o.doneAt||o.createdAt)}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  el.innerHTML = html;
+}
+
+function copyPendingOrder(orderNo){
+  const o = getPendingOrders().find(o=>o.orderNo===orderNo);
+  if(!o) return;
+  const msg = `🔔 ORDER #${o.orderNo}\n━━━━━━━━━━━━\n📦 MB: ${o.mb} (${o.type==='week'?'WIKI':'MWEZI'})\n📱 Laini: ${o.lineSimNo||'—'} - ${o.lineDevice||'—'}\n👤 Namba: ${o.buyerPhone}\n━━━━━━━━━━━━`;
+  navigator.clipboard?.writeText(msg)
+    .then(()=>showToast(`✓ ORDER #${orderNo} umenakiliwa`,'success'))
+    .catch(()=>{ const ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('✓ Umenakiliwa','success'); });
+}
+
+async function confirmSingleOrder(orderNo){
+  const orders = getPendingOrders();
+  const idx    = orders.findIndex(o=>o.orderNo===orderNo);
+  if(idx<0) return;
+  const o = orders[idx];
+  await processOrderDone(o);
+  orders[idx].status  = 'done';
+  orders[idx].doneAt  = new Date().toISOString();
+  savePendingOrders(orders);
+  showToast(`✅ ORDER #${orderNo} imekamilika — mauzo yamejazwa!`,'success');
+  renderOrdersPage();
+  renderPendingOrdersBadge();
+  renderAll();
+}
+
+async function confirmAllOrders(){
+  const orders  = getPendingOrders();
+  const pending = orders.filter(o=>o.status==='pending');
+  if(!pending.length) return showToast('Hakuna orders za kukonfirm','error');
+  document.getElementById('confirmMessage').textContent =
+    `Confirm orders zote ${pending.length}? Mauzo yote yatajazwa na SMS zitatumwa kwa wateja.`;
+  document.getElementById('confirmBtn').onclick = async ()=>{
+    closeModal('modalConfirm');
+    showToast('⏳ Inakonfirm orders zote...','');
+    for(const o of pending){
+      await processOrderDone(o);
+      const idx = orders.findIndex(x=>x.orderNo===o.orderNo);
+      if(idx>=0){ orders[idx].status='done'; orders[idx].doneAt=new Date().toISOString(); }
+    }
+    savePendingOrders(orders);
+    showToast(`✅ Orders ${pending.length} zimekamilika!`,'success');
+    renderOrdersPage();
+    renderPendingOrdersBadge();
+    renderAll();
+  };
+  openModal('modalConfirm');
+}
+
+async function processOrderDone(o){
+  // Jaza mauzo
+  const lines  = getLines();
+  const line   = lines.find(l=>l.id===o.lineId);
+  if(!line) return;
+  const slots  = getLineSlots(o.lineId);
+  const type   = o.type;
+  if(type==='week'  && slots.weekUsed >=MAX_WEEK)  return;
+  if(type==='month' && slots.monthUsed>=MAX_MONTH) return;
+
+  // FIFO sell
+  const fifoResult = computeFifoCost(o.lineId, type, o.mb);
+  if(!fifoResult) return;
+  const costShare = fifoResult.totalCost;
+  const amount    = parseFloat(o.sellingPrice||0);
+  const profit    = amount - costShare;
+
+  applyFifoSell(o.lineId, type, o.mb);
+
+  const sales = getSales();
+  sales.push({
+    id:uid(), lineId:o.lineId, lineName:line.name, linePhone:line.phone,
+    type, costPrice:costShare, sellingPrice:amount, profit,
+    mb:fmtMB(o.mb), sellMb:o.mb,
+    buyerPhone:o.buyerPhone||null,
+    orderNo:o.orderNo,
+    date:new Date().toISOString()
+  });
+  saveSales(sales);
+  updateLineSlots(o.lineId, type);
+
+  // Tuma SMS kwa mteja
+  if(o.buyerPhone){
+    const mbLabel = fmtMB(o.mb);
+    const smsMsg  = buildSmsMessage(mbLabel, amount);
+    let phone = o.buyerPhone.replace(/\s+/g,'');
+    if(phone.startsWith('0')) phone='255'+phone.slice(1);
+    if(phone.startsWith('+')) phone=phone.slice(1);
+    try {
+      await fetch('https://nextsms-proxy.hanshannu9.workers.dev',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({to:phone, text:smsMsg})
+      });
+    } catch(e){ console.error('SMS error:',e); }
+  }
+}
+
+function cancelOrder(orderNo){
+  document.getElementById('confirmMessage').textContent = `Futa ORDER #${orderNo}?`;
+  document.getElementById('confirmBtn').onclick = ()=>{
+    const orders = getPendingOrders().filter(o=>o.orderNo!==orderNo);
+    savePendingOrders(orders);
+    closeModal('modalConfirm');
+    showToast(`ORDER #${orderNo} imefutwa`,'success');
+    renderOrdersPage();
+    renderPendingOrdersBadge();
+  };
+  openModal('modalConfirm');
+}
+
+// ============================================================
 // ORDER SYSTEM
 // ============================================================
 let _orderCounter = parseInt(localStorage.getItem('bm_order_counter')||'0');
@@ -3940,7 +4151,7 @@ function confirmOrder(){
   updateOrderPreview();
   copyOrderMsg();
   // Hifadhi order inayosubiri — itakamilishwa ukisema Done
-  const orders = JSON.parse(localStorage.getItem('bm_pending_orders')||'[]');
+  const orders = getPendingOrders();
   orders.push({
     orderNo: _pendingOrder.orderNo,
     lineId: _pendingOrder.lineId,
@@ -3954,7 +4165,7 @@ function confirmOrder(){
     status: 'pending',
     createdAt: new Date().toISOString()
   });
-  localStorage.setItem('bm_pending_orders', JSON.stringify(orders));
+  savePendingOrders(orders);
   closeModal('modalOrder');
   showToast(`✓ Order #${_pendingOrder.orderNo} imetumwa — subiri DONE kutoka mfanyakazi`,'success');
   // Angalia pending orders badge
@@ -3962,19 +4173,12 @@ function confirmOrder(){
 }
 
 function renderPendingOrdersBadge(){
-  const orders = JSON.parse(localStorage.getItem('bm_pending_orders')||'[]');
+  const orders  = getPendingOrders();
   const pending = orders.filter(o=>o.status==='pending');
-  // Onyesha badge kwenye sidebar
-  const finderBtn = document.querySelector('[data-page="finder"]');
-  if(finderBtn){
-    let badge = finderBtn.querySelector('.order-badge');
-    if(pending.length){
-      if(!badge){ badge=document.createElement('span'); badge.className='order-badge';
-        badge.style.cssText='background:var(--danger);color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .35rem;border-radius:10px;margin-left:auto';
-        finderBtn.appendChild(badge);
-      }
-      badge.textContent = pending.length;
-    } else if(badge){ badge.remove(); }
+  const badge   = document.getElementById('ordersNavBadge');
+  if(badge){
+    badge.style.display = pending.length ? 'inline' : 'none';
+    badge.textContent   = pending.length;
   }
 }
 
@@ -4028,9 +4232,15 @@ function findBestLine(mbOverride, typeOverride){
       .map(l=>({
         line:l, type,
         mbAvail: lineMbAvailable(l.id, type),
-        mbWaste: lineMbAvailable(l.id, type) - mb
+        mbWaste: lineMbAvailable(l.id, type) - mb,
+        isWorker: l.owner==='worker'
       }))
-      .sort((a,b)=>a.mbWaste - b.mbWaste);
+      // Panga: mfanyakazi kwanza, kisha mb chache zaidi
+      .sort((a,b)=>{
+        if(a.isWorker && !b.isWorker) return -1;
+        if(!a.isWorker && b.isWorker) return 1;
+        return a.mbWaste - b.mbWaste;
+      });
   }
 
   let candidates = getCandidates(preferredType);
@@ -4092,15 +4302,27 @@ function renderFinderResult(candidates, mb, preferredType, usedFallback){
     </div>
     ${others.length?`
     <div style="font-size:.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Chaguzi Nyingine</div>
-    ${others.map(c=>`
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;cursor:pointer" onclick="useFinderLine('${c.line.id}','${c.type}',${mb})">
-        <div><div style="font-weight:600;font-size:.9rem">${c.line.name}</div>
-        <div style="font-size:.75rem;color:var(--text2)">${c.line.phone} · ${c.type==='week'?'Wiki':'Mwezi'}</div></div>
-        <div style="text-align:right">
-          <div style="font-weight:700;font-size:.9rem">${fmtMB(c.mbAvail)}</div>
-          <div style="font-size:.7rem;color:var(--text3)">Itabaki: ${fmtMB(c.mbWaste)}</div>
+    ${others.map(c=>{
+      const workerBadge = c.isWorker
+        ? `<span style="font-size:.62rem;font-weight:700;padding:.1rem .35rem;border-radius:4px;background:rgba(251,191,36,.15);color:var(--warning);margin-left:.3rem">👷</span>`
+        : `<span style="font-size:.62rem;padding:.1rem .35rem;border-radius:4px;background:rgba(0,196,167,.1);color:var(--accent);margin-left:.3rem">👤</span>`;
+      return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:.5rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+          <div>
+            <div style="font-weight:600;font-size:.9rem">${c.line.name}${workerBadge}</div>
+            <div style="font-size:.75rem;color:var(--text2)">${c.line.phone}${c.line.device?' · '+c.line.simNo+' '+c.line.device:''} · ${c.type==='week'?'Wiki':'Mwezi'}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700;font-size:.9rem">${fmtMB(c.mbAvail)}</div>
+            <div style="font-size:.7rem;color:var(--text3)">Itabaki: ${fmtMB(c.mbWaste)}</div>
+          </div>
         </div>
-      </div>`).join('')}` : ''}`;
+        <div style="display:flex;gap:.4rem">
+          <button class="btn btn-ghost btn-sm" style="flex:1" onclick="useFinderLine('${c.line.id}','${c.type}',${mb})">💸 Mwenyewe</button>
+          <button class="btn btn-ghost btn-sm" style="flex:1;border-color:var(--warning);color:var(--warning)" onclick="openOrderModal('${c.line.id}','${c.type}',${mb})">📤 Mfanyakazi</button>
+        </div>
+      </div>`;
+    }).join('')}` : ''}`;
 }
 
 function useFinderLine(lineId, type, mb){
@@ -4126,6 +4348,7 @@ function navigateTo(page){
   if(page==='balance'){updateBalancePage();updateBalancePreview()}
   if(page==='reports')renderReports();
   if(page==='loans'){renderLoans();}
+  if(page==='orders'){ renderOrdersPage(); }
   if(page==='customers'){ renderCustomers(); }
   if(page==='finder'){ finderBuildGbBtns(); document.getElementById('finderResult').innerHTML=''; document.getElementById('finderMbInput').value=''; }
   if(page==='settings'){
@@ -4133,6 +4356,8 @@ function navigateTo(page){
     const bp = document.getElementById('bossPhoneInput');
     if(bp) bp.value = localStorage.getItem('bm_boss_phone')||'';
     saveBossPhone();
+    const on = document.getElementById('currentOrderNo');
+    if(on) on.textContent = '#'+String(_orderCounter).padStart(3,'0');
   }
 }
 document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>navigateTo(btn.dataset.page)));
