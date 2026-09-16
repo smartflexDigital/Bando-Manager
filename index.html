@@ -26,7 +26,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .nav-btn.active{background:rgba(0,196,167,.12);color:var(--accent);font-weight:600}
 .nav-icon{font-size:1.1rem;width:1.4rem;text-align:center}
 .content{margin-left:200px;flex:1;padding:2rem 1.75rem;max-width:1100px}
-.page{display:none}.page.active{display:block}
+.page{display:none;position:relative}.page.active{display:block}
 .page-header{margin-bottom:1.75rem}
 .page-header h1{font-size:1.6rem;font-weight:700}
 .page-sub{color:var(--text2);font-size:.9rem;margin-top:.2rem}
@@ -868,13 +868,18 @@ canvas{display:block;width:100%!important}
       </div>
 
       <div class="form-card" style="max-width:420px;margin-top:1rem">
-        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:1rem">🔔 Order Number — Reset</div>
-        <p style="font-size:.83rem;color:var(--text2);margin-bottom:1rem">Order za sasa zinaendelea kuhesabu. Ukitaka kuanza upya #001 — bonyeza Reset hapa chini.</p>
-        <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg3);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem">
-          <span style="font-size:.85rem;color:var(--text2)">Order ya Sasa</span>
-          <span style="font-weight:700;font-size:1.1rem" id="currentOrderNo">#000</span>
+        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:1rem">🔔 Order Number</div>
+        <p style="font-size:.83rem;color:var(--text2);margin-bottom:1rem">Badilisha au weka namba yoyote ya kuanza order inayofuata.</p>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Order ya Sasa</label>
+            <input type="number" id="currentOrderNo" min="0" style="font-weight:700;font-size:1rem" oninput="onOrderCounterEdit()"/>
+          </div>
+          <div class="form-group" style="margin-bottom:0;display:flex;align-items:flex-end">
+            <button class="btn btn-ghost btn-full" style="border-color:var(--warning);color:var(--warning)" onclick="applyOrderCounter()">✅ Weka</button>
+          </div>
         </div>
-        <button class="btn btn-ghost btn-full" style="border-color:var(--warning);color:var(--warning)" onclick="resetOrderCounter()">🔄 Reset Order Counter → #001</button>
+        <p style="font-size:.75rem;color:var(--text3);margin-top:.5rem">Mfano: weka 0 → inayofuata #001, weka 11 → inayofuata #012</p>
       </div>
         <p style="font-size:.83rem;color:var(--text2);margin-bottom:1rem">PIN hii (namba 4) inatumika kuona taarifa za faida — tofauti na PIN ya kufungulia mfumo.</p>
         <div class="form-group">
@@ -1094,6 +1099,16 @@ canvas{display:block;width:100%!important}
     <div class="form-group">
       <label>Namba ya Mteja</label>
       <input type="text" id="orderBuyerPhone" placeholder="e.g. 0637604108" oninput="updateOrderPreview()"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Bei ya Kuuzia (TSh)</label>
+        <input type="number" id="orderSellingPrice" placeholder="e.g. 1500" min="0" oninput="updateOrderPreview()"/>
+      </div>
+      <div class="form-group">
+        <label>Gharama (Auto)</label>
+        <input type="text" id="orderCostPreview" disabled style="opacity:.6;font-size:.85rem"/>
+      </div>
     </div>
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:.85rem;margin-bottom:1rem">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
@@ -1364,20 +1379,24 @@ function showPinMsg(msg, ok){
   if(ok) setTimeout(()=>el.style.display='none', 3000);
 }
 
+function onOrderCounterEdit(){}
+
+function applyOrderCounter(){
+  const el  = document.getElementById('currentOrderNo');
+  const val = parseInt(el?.value)||0;
+  _orderCounter = val;
+  localStorage.setItem('bm_order_counter', String(val));
+  showToast(`✓ Order counter imewekwa — inayofuata: #${String(val+1).padStart(3,'0')}`,'success');
+}
+
 function resetOrderCounter(){
-  document.getElementById('confirmMessage').textContent =
-    'Reset order counter? Order inayofuata itakuwa #001.';
-  document.getElementById('confirmBtn').onclick = ()=>{
-    _orderCounter = 0;
-    localStorage.setItem('bm_order_counter','0');
-    localStorage.setItem('bm_pending_orders','[]');
-    closeModal('modalConfirm');
-    showToast('✓ Order counter imewekwa upya — inayofuata: #001','success');
-    renderPendingOrdersBadge();
-    const el = document.getElementById('currentOrderNo');
-    if(el) el.textContent = '#000';
-  };
-  openModal('modalConfirm');
+  _orderCounter = 0;
+  localStorage.setItem('bm_order_counter','0');
+  localStorage.setItem('bm_pending_orders','[]');
+  const el = document.getElementById('currentOrderNo');
+  if(el) el.value = 0;
+  showToast('✓ Order counter imewekwa 0 — inayofuata: #001','success');
+  renderPendingOrdersBadge();
 }
 
 function saveBossPhone(){
@@ -4033,11 +4052,12 @@ async function processOrderDone(o){
 
   // FIFO sell
   const fifoResult = computeFifoCost(o.lineId, type, o.mb);
-  if(!fifoResult) return;
+  if(!fifoResult){ console.log('FIFO failed for order',o.orderNo); return; }
   const costShare = fifoResult.totalCost;
-  const amount    = parseFloat(o.sellingPrice||0);
+  const amount    = parseFloat(o.sellingPrice)||0;
   const profit    = amount - costShare;
 
+  // Thibitisha MB zimepungua kabla ya kuendelea
   applyFifoSell(o.lineId, type, o.mb);
 
   const sales = getSales();
@@ -4096,22 +4116,30 @@ function nextOrderNo(){
 function openOrderModal(lineId, type, mb){
   const line = getLines().find(l=>l.id===lineId);
   if(!line) return;
-  const mbLabel = fmtMB(mb);
+  const mbLabel   = fmtMB(mb);
   const typeLabel = type==='week'?'WIKI':'MWEZI';
-  const orderNo = nextOrderNo();
-
-  _pendingOrder = { lineId, type, mb, mbLabel, orderNo, line };
-
+  const orderNo   = nextOrderNo();
+  // Hesabu gharama ya kweli (FIFO)
+  const fifo = computeFifoCost(lineId, type, mb);
+  const cost = fifo ? fifo.totalCost : 0;
+  // Bei ya default kutoka pricing table
+  const defaultPrice = calcPriceForMB(type, mb) || 0;
+  _pendingOrder = { lineId, type, mb, mbLabel, orderNo, line, cost };
   // Info juu
   const infoEl = document.getElementById('orderLineInfo');
   if(infoEl) infoEl.innerHTML = `
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
       <span style="font-weight:600">${line.name}</span>
       <span style="color:var(--text2)">${line.simNo||'SIM1'} · ${line.device||'—'}</span>
       <span style="color:var(--accent)">${mbLabel} (${typeLabel})</span>
+      ${fifo?`<span style="color:var(--text3);font-size:.78rem">Gharama: ${fmt(cost)}</span>`:''}
     </div>`;
-
-  // Preview ujumbe
+  // Weka bei ya default
+  const priceEl = document.getElementById('orderSellingPrice');
+  if(priceEl) priceEl.value = defaultPrice || '';
+  const costEl = document.getElementById('orderCostPreview');
+  if(costEl)  costEl.value  = fifo ? fmt(cost) : '—';
+  document.getElementById('orderBuyerPhone').value = '';
   updateOrderPreview();
   openModal('modalOrder');
   setTimeout(()=>document.getElementById('orderBuyerPhone').focus(), 200);
@@ -4147,10 +4175,11 @@ function copyOrderMsg(){
 
 function confirmOrder(){
   const phone = document.getElementById('orderBuyerPhone').value.trim();
+  const sellingPrice = parseFloat(document.getElementById('orderSellingPrice').value)||0;
   if(!phone) return showToast('Ingiza namba ya mteja kwanza','error');
+  if(!sellingPrice) return showToast('Ingiza bei ya kuuzia','error');
   updateOrderPreview();
   copyOrderMsg();
-  // Hifadhi order inayosubiri — itakamilishwa ukisema Done
   const orders = getPendingOrders();
   orders.push({
     orderNo: _pendingOrder.orderNo,
@@ -4159,6 +4188,8 @@ function confirmOrder(){
     mb: _pendingOrder.mb,
     mbLabel: _pendingOrder.mbLabel,
     buyerPhone: phone,
+    sellingPrice,
+    cost: _pendingOrder.cost||0,
     lineName: _pendingOrder.line.name,
     lineDevice: _pendingOrder.line.device,
     lineSimNo: _pendingOrder.line.simNo,
@@ -4167,8 +4198,7 @@ function confirmOrder(){
   });
   savePendingOrders(orders);
   closeModal('modalOrder');
-  showToast(`✓ Order #${_pendingOrder.orderNo} imetumwa — subiri DONE kutoka mfanyakazi`,'success');
-  // Angalia pending orders badge
+  showToast(`✓ ORDER #${_pendingOrder.orderNo} — Bei: ${fmt(sellingPrice)}`,'success');
   renderPendingOrdersBadge();
 }
 
@@ -4357,7 +4387,7 @@ function navigateTo(page){
     if(bp) bp.value = localStorage.getItem('bm_boss_phone')||'';
     saveBossPhone();
     const on = document.getElementById('currentOrderNo');
-    if(on) on.textContent = '#'+String(_orderCounter).padStart(3,'0');
+    if(on) on.value = _orderCounter;
   }
 }
 document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>navigateTo(btn.dataset.page)));
