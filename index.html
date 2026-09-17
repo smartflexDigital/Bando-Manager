@@ -13,7 +13,7 @@
   --text:#e8edf5;--text2:#8a9ab5;--text3:#5a6a80;
   --card-r:12px;--font:'Segoe UI',system-ui,sans-serif;
 }
-body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.5}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.5;overflow-x:hidden}
 .topbar{position:fixed;top:0;left:0;right:0;height:56px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;z-index:100}
 .topbar-brand{display:flex;align-items:center;gap:.5rem}
 .brand-icon{font-size:1.3rem}
@@ -25,7 +25,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .nav-btn:hover{background:var(--bg3);color:var(--text)}
 .nav-btn.active{background:rgba(0,196,167,.12);color:var(--accent);font-weight:600}
 .nav-icon{font-size:1.1rem;width:1.4rem;text-align:center}
-.content{margin-left:200px;flex:1;padding:2rem 1.75rem;max-width:1100px}
+.content{margin-left:200px;flex:1;padding:2rem 1.75rem;max-width:1100px;overflow-x:hidden}
 .page{display:none;position:relative}.page.active{display:block}
 .page-header{margin-bottom:1.75rem}
 .page-header h1{font-size:1.6rem;font-weight:700}
@@ -362,11 +362,16 @@ canvas{display:block;width:100%!important}
         <!-- AU INGIZA MB -->
         <div class="form-group">
           <label>Au Ingiza MB Mwenyewe</label>
-          <div style="display:flex;gap:.5rem">
-            <input type="number" id="finderMbInput" placeholder="e.g. 2048" min="1"
-              style="flex:1" oninput="onFinderMbInput()"/>
+          <input type="number" id="finderMbInput" placeholder="e.g. 2048" min="1"
+            style="width:100%;margin-bottom:.5rem" oninput="onFinderMbInput()"/>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <div class="type-toggle" style="flex:1">
+              <button type="button" class="type-btn active" data-mtype="week" onclick="selectFinderManualType('week',this)">📅 Wiki</button>
+              <button type="button" class="type-btn" data-mtype="month" onclick="selectFinderManualType('month',this)">🗓️ Mwezi</button>
+            </div>
             <button class="btn btn-primary" onclick="findBestLine()">🔍 Tafuta</button>
           </div>
+          <div style="font-size:.72rem;color:var(--text3);margin-top:.4rem">Chagua Wiki au Mwezi mwenyewe — hata GB ndogo unaweza kuituma kupitia Mwezi ukiwa busy</div>
         </div>
       </div>
 
@@ -909,12 +914,14 @@ canvas{display:block;width:100%!important}
             value="" oninput="saveBossPhone()"/>
         </div>
         <div id="bossPhoneStatus" style="font-size:.8rem;margin-top:.25rem"></div>
-        <div style="background:var(--bg3);border-radius:8px;padding:.75rem;font-size:.78rem;color:var(--text2);margin-top:.75rem">
+        <div style="background:var(--bg3);border-radius:8px;padding:.75rem;font-size:.78rem;color:var(--text2);margin-top:.75rem;overflow-x:auto">
           <strong>Ujumbe utakaoonekana:</strong><br>
-          <code style="color:var(--accent);font-size:.75rem">[SYS::2026-09-05] PKT_RECV:4 | FLUX:128000 | NET:45500 | STATUS:GREEN | EOF</code><br>
+          <code style="color:var(--accent);font-size:.72rem;word-break:break-all;white-space:pre-wrap;display:block;margin:.4rem 0">[SYS::2026-09-05] PKT_RECV:4 | FLUX:128000 | NET:45500 | STATUS:GREEN | EOF</code>
           <span style="color:var(--text3);margin-top:.3rem;display:block">PKT_RECV = mauzo, FLUX = mapato (TSh), NET = faida (TSh)</span>
         </div>
       </div>
+
+      <div class="form-card" style="max-width:420px;margin-top:1rem">
         <div class="slot-info-box">
           <div class="sib-row"><span class="sib-label">Toleo</span><span class="sib-val">BandoManager v2.0</span></div>
           <div class="sib-row"><span class="sib-label">Database</span><span class="sib-val" style="color:var(--success)">Firebase Firestore ☁️</span></div>
@@ -3968,8 +3975,9 @@ function renderOrdersPage(){
 👤 Namba: ${o.buyerPhone}
 ━━━━━━━━━━━━</div>
         <div style="display:flex;gap:.5rem">
-          <button class="btn btn-ghost btn-sm" style="flex:1" onclick="copyPendingOrder('${o.orderNo}')">📋 Nakili Tena</button>
-          <button class="btn btn-success" style="flex:2" onclick="confirmSingleOrder('${o.orderNo}')">✅ Done — Confirm</button>
+          <button class="btn btn-ghost btn-sm" onclick="copyPendingOrder('${o.orderNo}')">📋 Nakili</button>
+          <button class="btn btn-ghost btn-sm" onclick="editPendingOrderPrice('${o.orderNo}')" style="border-color:var(--accent);color:var(--accent)">✏️ Bei: ${o.sellingPrice?fmt(o.sellingPrice):'HAIJAWEKWA'}</button>
+          <button class="btn btn-success" style="flex:1" onclick="confirmSingleOrder('${o.orderNo}')">✅ Done</button>
           <button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.orderNo}')">✕</button>
         </div>
       </div>`).join('');
@@ -4002,11 +4010,29 @@ function copyPendingOrder(orderNo){
     .catch(()=>{ const ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('✓ Umenakiliwa','success'); });
 }
 
+function editPendingOrderPrice(orderNo){
+  const orders = getPendingOrders();
+  const o = orders.find(x=>x.orderNo===orderNo);
+  if(!o) return;
+  const newPrice = prompt(`Ingiza bei ya kuuzia kwa ORDER #${orderNo}\n(${o.mb}MB, Gharama: ${fmt(o.cost||0)}):`, o.sellingPrice||'');
+  if(newPrice===null) return; // Ghairi
+  const price = parseFloat(newPrice);
+  if(!price || price<=0) return showToast('Bei si sahihi','error');
+  const idx = orders.findIndex(x=>x.orderNo===orderNo);
+  orders[idx].sellingPrice = price;
+  savePendingOrders(orders);
+  showToast(`✓ Bei ya ORDER #${orderNo} imewekwa: ${fmt(price)}`,'success');
+  renderOrdersPage();
+}
+
 async function confirmSingleOrder(orderNo){
   const orders = getPendingOrders();
   const idx    = orders.findIndex(o=>o.orderNo===orderNo);
   if(idx<0) return;
   const o = orders[idx];
+  if(!o.sellingPrice || o.sellingPrice<=0){
+    return showToast(`⚠️ ORDER #${orderNo} haina bei — bonyeza "✏️ Bei" kwanza`,'error');
+  }
   await processOrderDone(o);
   orders[idx].status  = 'done';
   orders[idx].doneAt  = new Date().toISOString();
@@ -4021,6 +4047,10 @@ async function confirmAllOrders(){
   const orders  = getPendingOrders();
   const pending = orders.filter(o=>o.status==='pending');
   if(!pending.length) return showToast('Hakuna orders za kukonfirm','error');
+  const noPrice = pending.filter(o=>!o.sellingPrice||o.sellingPrice<=0);
+  if(noPrice.length){
+    return showToast(`⚠️ Orders ${noPrice.length} hazina bei — weka bei zake kwanza (bonyeza ✏️ Bei)`,'error');
+  }
   document.getElementById('confirmMessage').textContent =
     `Confirm orders zote ${pending.length}? Mauzo yote yatajazwa na SMS zitatumwa kwa wateja.`;
   document.getElementById('confirmBtn').onclick = async ()=>{
@@ -4240,15 +4270,22 @@ function finderSelectGb(gb, mb, type, el){
   findBestLine(mb, type);
 }
 
+let _finderManualType = 'week';
+function selectFinderManualType(type, el){
+  _finderManualType = type;
+  document.querySelectorAll('[data-mtype]').forEach(b=>b.classList.toggle('active', b.dataset.mtype===type));
+}
+
 function onFinderMbInput(){
   document.querySelectorAll('#finderGbBtns .type-btn').forEach(b=>b.classList.remove('active'));
 }
 
 function findBestLine(mbOverride, typeOverride){
-  const mb   = mbOverride || parseFloat(document.getElementById('finderMbInput').value)||0;
-  const gbEq = mb / 1024;
+  const mb = mbOverride || parseFloat(document.getElementById('finderMbInput').value)||0;
   if(!mb) return showToast('Ingiza MB kwanza','error');
-  const preferredType = typeOverride || (gbEq <= WIKI_GB_MAX ? 'week' : 'month');
+  // Kama typeOverride imetolewa (kutoka GB button) tumia hiyo
+  // Vinginevyo tumia chaguo la mtumiaji la Wiki/Mwezi (manual toggle)
+  const preferredType = typeOverride || _finderManualType;
   const lines = getLines();
 
   function getCandidates(type){
@@ -4380,7 +4417,13 @@ function navigateTo(page){
   if(page==='loans'){renderLoans();}
   if(page==='orders'){ renderOrdersPage(); }
   if(page==='customers'){ renderCustomers(); }
-  if(page==='finder'){ finderBuildGbBtns(); document.getElementById('finderResult').innerHTML=''; document.getElementById('finderMbInput').value=''; }
+  if(page==='finder'){
+    finderBuildGbBtns();
+    document.getElementById('finderResult').innerHTML='';
+    document.getElementById('finderMbInput').value='';
+    _finderManualType='week';
+    document.querySelectorAll('[data-mtype]').forEach(b=>b.classList.toggle('active', b.dataset.mtype==='week'));
+  }
   if(page==='settings'){
     document.getElementById('settingPinLen').textContent=PIN_LENGTH+' namba';
     const bp = document.getElementById('bossPhoneInput');
