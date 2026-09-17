@@ -338,7 +338,7 @@ canvas{display:block;width:100%!important}
     <section class="page" id="page-orders">
       <div class="page-header">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><h1>📋 Orders Zinazongoja</h1><p class="page-sub">Confirm ukipata "Done" kutoka mfanyakazi</p></div>
+          <div><h1>📋 Orders Zinazongoja</h1><p class="page-sub">Confirm ukipata "Done" kutoka Assistant</p></div>
           <button class="btn btn-ghost btn-sm" onclick="confirmAllOrders()" style="border-color:var(--success);color:var(--success)">✅ Confirm Zote</button>
         </div>
       </div>
@@ -591,6 +591,34 @@ canvas{display:block;width:100%!important}
         </div>
 
         <button class="btn btn-success btn-full" onclick="buyBando()">📦 Sajili Bando Jipya</button>
+      </div>
+
+      <!-- TUMA ORDER KWA MFANYAKAZI — laini/GB yoyote -->
+      <div class="form-card" style="margin-top:1.5rem;border-color:rgba(251,191,36,.3)">
+        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--warning);margin-bottom:1rem">📤 Tuma Order kwa Assistant — Laini/GB Yoyote</div>
+        <p style="font-size:.82rem;color:var(--text2);margin-bottom:1rem">Chagua laini yoyote na weka MB unayotaka — bila kutafuta kupitia "Pata Laini"</p>
+
+        <div class="form-group">
+          <label>Chagua Laini</label>
+          <select id="manualOrderLine" onchange="onManualOrderLineChange()"><option value="">-- Chagua laini --</option></select>
+        </div>
+
+        <div id="manualOrderLineInfo" style="display:none;margin-bottom:1rem"></div>
+
+        <div class="form-group">
+          <label>Aina ya Bando</label>
+          <div class="type-toggle">
+            <button type="button" class="type-btn active" data-motype="week" onclick="selectManualOrderType('week',this)">📅 Wiki</button>
+            <button type="button" class="type-btn" data-motype="month" onclick="selectManualOrderType('month',this)">🗓️ Mwezi</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>MB Unavyotaka Kutuma</label>
+          <input type="number" id="manualOrderMb" placeholder="e.g. 2048" min="1"/>
+        </div>
+
+        <button class="btn btn-primary btn-full" style="border-color:var(--warning)" onclick="openManualOrder()">📤 Tuma Order kwa Assistant</button>
       </div>
 
       <div class="section-title" style="margin-top:2rem">
@@ -886,6 +914,8 @@ canvas{display:block;width:100%!important}
         </div>
         <p style="font-size:.75rem;color:var(--text3);margin-top:.5rem">Mfano: weka 0 → inayofuata #001, weka 11 → inayofuata #012</p>
       </div>
+      <div class="form-card" style="max-width:420px;margin-top:1rem">
+        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:1rem">👁 PIN ya Kuona Faida</div>
         <p style="font-size:.83rem;color:var(--text2);margin-bottom:1rem">PIN hii (namba 4) inatumika kuona taarifa za faida — tofauti na PIN ya kufungulia mfumo.</p>
         <div class="form-group">
           <label>PIN ya Sasa ya Faida</label>
@@ -956,7 +986,7 @@ canvas{display:block;width:100%!important}
             <option value="TECNO">TECNO</option>
             <option value="SWITCH">SWITCH</option>
           </optgroup>
-          <optgroup label="👷 Mfanyakazi">
+          <optgroup label="🤖 Assistant">
             <option value="OKING">OKING</option>
             <option value="BLACK MOMOFLY">BLACK MOMOFLY</option>
             <option value="BLUE MOMOFLY">BLUE MOMOFLY</option>
@@ -978,7 +1008,7 @@ canvas{display:block;width:100%!important}
       <label>Mmiliki</label>
       <div class="type-toggle">
         <button type="button" class="type-btn active" data-owner="self" onclick="selectLineOwner('self',this)">👤 Wangu</button>
-        <button type="button" class="type-btn" data-owner="worker" onclick="selectLineOwner('worker',this)">👷 Mfanyakazi</button>
+        <button type="button" class="type-btn" data-owner="worker" onclick="selectLineOwner('worker',this)">🤖 Assistant</button>
       </div>
     </div>
     <div class="form-row">
@@ -1099,7 +1129,7 @@ canvas{display:block;width:100%!important}
 <div class="modal-overlay" id="modalOrder">
   <div class="modal modal-sm">
     <div class="modal-header">
-      <h2>📤 Order kwa Mfanyakazi</h2>
+      <h2>📤 Order kwa Assistant</h2>
       <button class="modal-close" onclick="closeModal('modalOrder')">✕</button>
     </div>
     <div style="font-size:.82rem;color:var(--text2);margin-bottom:.75rem" id="orderLineInfo"></div>
@@ -2364,7 +2394,7 @@ function buildLineCard(line,showActions){
 
   // Device/SIM/Owner badge
   const ownerBadge = line.owner==='worker'
-    ? `<span style="font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;background:rgba(251,191,36,.15);color:var(--warning)">👷 Mfanyakazi</span>`
+    ? `<span style="font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;background:rgba(251,191,36,.15);color:var(--warning)">🤖 Assistant</span>`
     : `<span style="font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;background:rgba(0,196,167,.12);color:var(--accent)">👤 Wangu</span>`;
   const deviceBadge = line.device
     ? `<span style="font-size:.65rem;padding:.1rem .4rem;border-radius:4px;background:var(--bg3);color:var(--text2);margin-left:.3rem">${line.simNo||'SIM1'} · ${line.device}</span>`
@@ -2491,8 +2521,8 @@ function renderLines(){
 // ---- SELECTS ----
 function populateLineSelects(){
   const lines=getLines();
-  const opts=lines.length?lines.map(l=>`<option value="${l.id}">${l.name} — ${l.phone}</option>`).join(''):'';
-  ['sellLine','balanceLine'].forEach(id=>{
+  const opts=lines.length?lines.map(l=>`<option value="${l.id}">${l.name} — ${l.phone}${l.owner==='worker'?' (Assistant)':''}</option>`).join(''):'';
+  ['sellLine','balanceLine','manualOrderLine'].forEach(id=>{
     const el=document.getElementById(id);if(!el)return;
     const prev=el.value;
     el.innerHTML='<option value="">-- Chagua laini --</option>'+opts;
@@ -4132,6 +4162,57 @@ function cancelOrder(orderNo){
 }
 
 // ============================================================
+// MANUAL ORDER — Laini/GB Yoyote (kwenye Nunua Bando page)
+// ============================================================
+let _manualOrderType = 'week';
+
+function selectManualOrderType(type, el){
+  _manualOrderType = type;
+  document.querySelectorAll('[data-motype]').forEach(b=>b.classList.toggle('active', b.dataset.motype===type));
+}
+
+function onManualOrderLineChange(){
+  const lineId = document.getElementById('manualOrderLine').value;
+  const infoEl = document.getElementById('manualOrderLineInfo');
+  if(!lineId){ infoEl.style.display='none'; return; }
+  const line = getLines().find(l=>l.id===lineId);
+  if(!line){ infoEl.style.display='none'; return; }
+  const wMb = lineMbAvailable(lineId,'week');
+  const mMb = lineMbAvailable(lineId,'month');
+  const ownerBadge = line.owner==='worker'
+    ? `<span style="font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;background:rgba(251,191,36,.15);color:var(--warning)">🤖 Assistant</span>`
+    : `<span style="font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;background:rgba(0,196,167,.12);color:var(--accent)">👤 Wangu</span>`;
+  infoEl.style.display='block';
+  infoEl.innerHTML = `
+    <div class="slot-info-box">
+      <div class="sib-row"><span class="sib-label">Simu</span><span class="sib-val">${line.simNo||'—'} · ${line.device||'—'} ${ownerBadge}</span></div>
+      <div class="sib-row"><span class="sib-label">MB za Wiki</span><span class="sib-val ${wMb>0?'ok':'full'}">${fmtMB(wMb)}</span></div>
+      <div class="sib-row"><span class="sib-label">MB za Mwezi</span><span class="sib-val ${mMb>0?'ok':'full'}">${fmtMB(mMb)}</span></div>
+    </div>`;
+}
+
+function openManualOrder(){
+  const lineId = document.getElementById('manualOrderLine').value;
+  const mb     = parseFloat(document.getElementById('manualOrderMb').value)||0;
+  const type   = _manualOrderType;
+  if(!lineId) return showToast('Chagua laini kwanza','error');
+  if(!mb)     return showToast('Ingiza MB kwanza','error');
+
+  const line = getLines().find(l=>l.id===lineId);
+  if(!line) return;
+
+  // Angalia slot na MB
+  const slots = getLineSlots(lineId);
+  if(type==='week'  && slots.weekUsed >=MAX_WEEK)  return showToast('⚠️ Slots za Wiki zimekwisha kwa laini hii leo!','warning');
+  if(type==='month' && slots.monthUsed>=MAX_MONTH) return showToast('⚠️ Slots za Mwezi zimekwisha kwa laini hii leo!','warning');
+  const avail = lineMbAvailable(lineId, type);
+  if(mb > avail) return showToast(`❌ MB haitoshi! Zilizopo (${type==='week'?'Wiki':'Mwezi'}): ${fmtMB(avail)}`,'error');
+
+  // Fungua modal ya order — sawa na ile ya Pata Laini
+  openOrderModal(lineId, type, mb);
+}
+
+// ============================================================
 // ORDER SYSTEM
 // ============================================================
 let _orderCounter = parseInt(localStorage.getItem('bm_order_counter')||'0');
@@ -4191,7 +4272,7 @@ function copyOrderMsg(){
   // Update phone before copying
   updateOrderPreview();
   navigator.clipboard?.writeText(_pendingOrder.msg)
-    .then(()=>showToast('✓ Ujumbe umenakiliwa — tuma kwa mfanyakazi!','success'))
+    .then(()=>showToast('✓ Ujumbe umenakiliwa — tuma kwa Assistant!','success'))
     .catch(()=>{
       // Fallback
       const ta = document.createElement('textarea');
@@ -4302,7 +4383,7 @@ function findBestLine(mbOverride, typeOverride){
         mbWaste: lineMbAvailable(l.id, type) - mb,
         isWorker: l.owner==='worker'
       }))
-      // Panga: mfanyakazi kwanza, kisha mb chache zaidi
+      // Panga: Assistant kwanza, kisha mb chache zaidi
       .sort((a,b)=>{
         if(a.isWorker && !b.isWorker) return -1;
         if(!a.isWorker && b.isWorker) return 1;
@@ -4361,10 +4442,10 @@ function renderFinderResult(candidates, mb, preferredType, usedFallback){
       </button>
       ${best.line.owner==='worker'?`
       <button class="btn btn-ghost btn-full" style="margin-top:.5rem;border-color:var(--warning);color:var(--warning)" onclick="openOrderModal('${best.line.id}','${best.type}',${mb})">
-        📤 Tuma Order kwa Mfanyakazi
+        📤 Tuma Order kwa Assistant
       </button>`:`
       <button class="btn btn-ghost btn-full" style="margin-top:.5rem" onclick="openOrderModal('${best.line.id}','${best.type}',${mb})">
-        📤 Tuma Order kwa Mfanyakazi
+        📤 Tuma Order kwa Assistant
       </button>`}
     </div>
     ${others.length?`
@@ -4386,7 +4467,7 @@ function renderFinderResult(candidates, mb, preferredType, usedFallback){
         </div>
         <div style="display:flex;gap:.4rem">
           <button class="btn btn-ghost btn-sm" style="flex:1" onclick="useFinderLine('${c.line.id}','${c.type}',${mb})">💸 Mwenyewe</button>
-          <button class="btn btn-ghost btn-sm" style="flex:1;border-color:var(--warning);color:var(--warning)" onclick="openOrderModal('${c.line.id}','${c.type}',${mb})">📤 Mfanyakazi</button>
+          <button class="btn btn-ghost btn-sm" style="flex:1;border-color:var(--warning);color:var(--warning)" onclick="openOrderModal('${c.line.id}','${c.type}',${mb})">📤 Assistant</button>
         </div>
       </div>`;
     }).join('')}` : ''}`;
