@@ -20,7 +20,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .brand-name{font-size:1.1rem;font-weight:700;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .topbar-date{font-size:.8rem;color:var(--text2)}
 .layout{display:flex;padding-top:56px;min-height:100vh}
-.sidebar{width:200px;background:var(--bg2);border-right:1px solid var(--border);padding:1rem .75rem;display:flex;flex-direction:column;gap:.25rem;position:fixed;top:56px;bottom:0;left:0;overflow-y:auto}
+.sidebar{width:200px;background:var(--bg2);border-right:1px solid var(--border);padding:1rem .75rem;display:flex;flex-direction:column;gap:.25rem;position:fixed;top:56px;bottom:0;left:0;overflow-y:auto;z-index:90}
 .nav-btn{display:flex;align-items:center;gap:.6rem;padding:.65rem .85rem;border:none;background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:.9rem;font-family:var(--font);text-align:left;width:100%;transition:background .15s,color .15s}
 .nav-btn:hover{background:var(--bg3);color:var(--text)}
 .nav-btn.active{background:rgba(0,196,167,.12);color:var(--accent);font-weight:600}
@@ -465,6 +465,35 @@ canvas{display:block;width:100%!important}
         </div>
         <button class="btn btn-primary btn-full" onclick="sellBundle()">💸 Rekodi Uuzaji</button>
       </div>
+
+      <!-- TUMA ORDER KWA ASSISTANT — laini/GB yoyote -->
+      <div class="form-card" style="margin-top:1.5rem;border-color:rgba(251,191,36,.3)">
+        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--warning);margin-bottom:1rem">📤 Tuma Order kwa Assistant — Laini/GB Yoyote</div>
+        <p style="font-size:.82rem;color:var(--text2);margin-bottom:1rem">Chagua laini yoyote na weka MB unayotaka — bila kutafuta kupitia "Pata Laini"</p>
+
+        <div class="form-group">
+          <label>Chagua Laini</label>
+          <select id="manualOrderLine" onchange="onManualOrderLineChange()"><option value="">-- Chagua laini --</option></select>
+        </div>
+
+        <div id="manualOrderLineInfo" style="display:none;margin-bottom:1rem"></div>
+
+        <div class="form-group">
+          <label>Aina ya Bando</label>
+          <div class="type-toggle">
+            <button type="button" class="type-btn active" data-motype="week" onclick="selectManualOrderType('week',this)">📅 Wiki</button>
+            <button type="button" class="type-btn" data-motype="month" onclick="selectManualOrderType('month',this)">🗓️ Mwezi</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>MB Unavyotaka Kutuma</label>
+          <input type="number" id="manualOrderMb" placeholder="e.g. 2048" min="1"/>
+        </div>
+
+        <button class="btn btn-primary btn-full" style="border-color:var(--warning)" onclick="openManualOrder()">📤 Tuma Order kwa Assistant</button>
+      </div>
+
       <div class="section-title" style="margin-top:2rem">Mauzo ya Leo</div>
       <div id="todaySalesList"></div>
     </section>
@@ -591,34 +620,6 @@ canvas{display:block;width:100%!important}
         </div>
 
         <button class="btn btn-success btn-full" onclick="buyBando()">📦 Sajili Bando Jipya</button>
-      </div>
-
-      <!-- TUMA ORDER KWA MFANYAKAZI — laini/GB yoyote -->
-      <div class="form-card" style="margin-top:1.5rem;border-color:rgba(251,191,36,.3)">
-        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--warning);margin-bottom:1rem">📤 Tuma Order kwa Assistant — Laini/GB Yoyote</div>
-        <p style="font-size:.82rem;color:var(--text2);margin-bottom:1rem">Chagua laini yoyote na weka MB unayotaka — bila kutafuta kupitia "Pata Laini"</p>
-
-        <div class="form-group">
-          <label>Chagua Laini</label>
-          <select id="manualOrderLine" onchange="onManualOrderLineChange()"><option value="">-- Chagua laini --</option></select>
-        </div>
-
-        <div id="manualOrderLineInfo" style="display:none;margin-bottom:1rem"></div>
-
-        <div class="form-group">
-          <label>Aina ya Bando</label>
-          <div class="type-toggle">
-            <button type="button" class="type-btn active" data-motype="week" onclick="selectManualOrderType('week',this)">📅 Wiki</button>
-            <button type="button" class="type-btn" data-motype="month" onclick="selectManualOrderType('month',this)">🗓️ Mwezi</button>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>MB Unavyotaka Kutuma</label>
-          <input type="number" id="manualOrderMb" placeholder="e.g. 2048" min="1"/>
-        </div>
-
-        <button class="btn btn-primary btn-full" style="border-color:var(--warning)" onclick="openManualOrder()">📤 Tuma Order kwa Assistant</button>
       </div>
 
       <div class="section-title" style="margin-top:2rem">
@@ -951,6 +952,33 @@ canvas{display:block;width:100%!important}
         </div>
       </div>
 
+      <!-- NAMBA YA ASSISTANT — kwa SMS za Order -->
+      <div class="form-card" style="max-width:420px;margin-top:1rem">
+        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--warning);margin-bottom:1rem">🤖 Namba ya Assistant</div>
+        <p style="font-size:.83rem;color:var(--text2);margin-bottom:1rem">Ukibonyeza "Hifadhi Order", SMS ya order itatumwa moja kwa moja kwa namba hii kupitia NextSMS — bila kunakili au WhatsApp.</p>
+        <div class="form-group">
+          <label>Namba ya Simu ya Assistant</label>
+          <input type="text" id="assistantPhoneInput" placeholder="e.g. 0712345678"
+            value="" oninput="saveAssistantPhone()"/>
+        </div>
+        <div id="assistantPhoneStatus" style="font-size:.8rem;margin-top:.25rem"></div>
+      </div>
+
+      <!-- BACKUP NA RESTORE -->
+      <div class="form-card" style="max-width:420px;margin-top:1rem;border-color:rgba(0,196,167,.35)">
+        <div class="card-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:1rem">💾 Backup ya Data</div>
+        <p style="font-size:.83rem;color:var(--text2);margin-bottom:1rem">Pakua data yako yote — laini, mauzo, mabando, wateja, mikopo, na orders — kwa faili moja. Hifadhi mahali salama (Google Drive, email, n.k).</p>
+        <button class="btn btn-primary btn-full" onclick="downloadFullBackup()">⬇️ Pakua Backup Kamili</button>
+        <div id="backupStatus" style="font-size:.78rem;color:var(--text3);margin-top:.5rem"></div>
+
+        <div style="border-top:1px solid var(--border);margin:1.25rem 0;padding-top:1.25rem">
+          <div style="font-size:.78rem;font-weight:600;color:var(--warning);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">⚠️ Rudisha Data (Restore)</div>
+          <p style="font-size:.8rem;color:var(--text2);margin-bottom:.75rem">Hii itabadilisha data yote ya sasa na ile iliyomo kwenye faili la backup. Tumia tu kama una uhakika.</p>
+          <input type="file" id="restoreFileInput" accept="application/json" style="display:none" onchange="onRestoreFileSelected(event)"/>
+          <button class="btn btn-ghost btn-full" style="border-color:var(--danger);color:var(--danger)" onclick="document.getElementById('restoreFileInput').click()">📤 Chagua Faili la Backup Kurudisha</button>
+        </div>
+      </div>
+
       <div class="form-card" style="max-width:420px;margin-top:1rem">
         <div class="slot-info-box">
           <div class="sib-row"><span class="sib-label">Toleo</span><span class="sib-val">BandoManager v2.0</span></div>
@@ -1152,7 +1180,7 @@ canvas{display:block;width:100%!important}
         <span style="font-size:.78rem;color:var(--text2);font-weight:600">Ujumbe wa Kutuma</span>
         <button type="button" class="btn btn-ghost btn-sm" style="padding:.15rem .5rem;font-size:.72rem" onclick="copyOrderMsg()">📋 Nakili</button>
       </div>
-      <div id="orderMsgPreview" style="font-size:.82rem;color:var(--text);line-height:1.7;white-space:pre-wrap;font-family:monospace"></div>
+      <div id="orderMsgPreview" style="font-size:.82rem;color:var(--text);line-height:1.7;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;max-width:100%;overflow-x:auto;font-family:monospace"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modalOrder')">Ghairi</button>
@@ -1422,18 +1450,32 @@ function applyOrderCounter(){
   const el  = document.getElementById('currentOrderNo');
   const val = parseInt(el?.value)||0;
   _orderCounter = val;
-  localStorage.setItem('bm_order_counter', String(val));
+  _cache.orderCounter = val;
+  saveMeta();
   showToast(`✓ Order counter imewekwa — inayofuata: #${String(val+1).padStart(3,'0')}`,'success');
 }
 
 function resetOrderCounter(){
   _orderCounter = 0;
-  localStorage.setItem('bm_order_counter','0');
-  localStorage.setItem('bm_pending_orders','[]');
+  _cache.orderCounter = 0;
+  saveMeta();
+  savePendingOrders([]);
   const el = document.getElementById('currentOrderNo');
   if(el) el.value = 0;
   showToast('✓ Order counter imewekwa 0 — inayofuata: #001','success');
   renderPendingOrdersBadge();
+}
+
+function saveAssistantPhone(){
+  const val = document.getElementById('assistantPhoneInput').value.trim();
+  const st  = document.getElementById('assistantPhoneStatus');
+  _cache.assistantPhone = val;
+  saveMeta();
+  if(val){
+    if(st){ st.textContent='✅ Order zote zitatumwa SMS moja kwa moja kwa namba hii'; st.style.color='var(--success)'; }
+  } else {
+    if(st){ st.textContent='Hakuna namba — utahitaji kunakili ujumbe mwenyewe'; st.style.color='var(--text3)'; }
+  }
 }
 
 function saveBossPhone(){
@@ -1533,7 +1575,7 @@ let fbApp=null, fbDb=null, fbReady=false;
 let syncStatus='idle'; // idle | syncing | synced | error
 
 // In-memory cache — mirrors Firestore, read/written synchronously by app code
-let _cache = { lines:[], sales:[], transactions:[], slots:[], calcRecords:[], loans:[], bandos:[], customers:[], lastDate:null };
+let _cache = { lines:[], sales:[], transactions:[], slots:[], calcRecords:[], loans:[], bandos:[], customers:[], orders:[], orderCounter:0, assistantPhone:'', lastDate:null };
 
 function setSyncStatus(s){
   syncStatus=s;
@@ -1582,20 +1624,25 @@ async function initFirebase(){
   try{
     fbApp = firebase.initializeApp(firebaseConfig);
     fbDb  = firebase.firestore();
-    const [lines,sales,transactions,slots,calcRecords,lastDate,loans,bandos,customers] = await Promise.all([
+    const [lines,sales,transactions,slots,calcRecords,metaDoc,loans,bandos,customers,orders] = await Promise.all([
       loadDocFromFirestore('lines',[]),
       loadDocFromFirestore('sales',[]),
       loadDocFromFirestore('transactions',[]),
       loadDocFromFirestore('slots',[]),
       loadDocFromFirestore('calcRecords',[]),
-      loadDocFromFirestore('meta',{}).then(m=>m && m.lastDate ? m.lastDate : null),
+      loadDocFromFirestore('meta',{}),
       loadDocFromFirestore('loans',[]),
       loadDocFromFirestore('bandos',[]),
-      loadDocFromFirestore('customers',[])
+      loadDocFromFirestore('customers',[]),
+      loadDocFromFirestore('orders',[])
     ]);
     _cache.lines=lines; _cache.sales=sales; _cache.transactions=transactions;
-    _cache.slots=slots; _cache.calcRecords=calcRecords; _cache.lastDate=lastDate;
-    _cache.loans=loans; _cache.bandos=bandos; _cache.customers=customers;
+    _cache.slots=slots; _cache.calcRecords=calcRecords;
+    _cache.lastDate = metaDoc && metaDoc.lastDate ? metaDoc.lastDate : null;
+    _cache.orderCounter = metaDoc && metaDoc.orderCounter ? metaDoc.orderCounter : 0;
+    _cache.assistantPhone = metaDoc && metaDoc.assistantPhone ? metaDoc.assistantPhone : '';
+    _cache.loans=loans; _cache.bandos=bandos; _cache.customers=customers; _cache.orders=orders;
+    _orderCounter = _cache.orderCounter;
     fbReady=true;
     await loadPinFromFirestore();
     setSyncStatus('synced');
@@ -1628,6 +1675,10 @@ function fmtDateTime(iso){
 }
 
 // ---- DAILY RESET — inafanya kazi saa 00:00 usiku ----
+function saveMeta(){
+  saveDocToFirestore('meta', { lastDate: _cache.lastDate, orderCounter: _cache.orderCounter, assistantPhone: _cache.assistantPhone });
+}
+
 function resetSlotsIfNewDay(){
   // Angalia kama siku imebadilika tangu mara ya mwisho
   const last=_cache.lastDate, today=todayStr();
@@ -1638,7 +1689,7 @@ function resetSlotsIfNewDay(){
   }
   if(last!==today){
     _cache.lastDate=today;
-    saveDocToFirestore('meta',{lastDate:today});
+    saveMeta();
   }
 }
 
@@ -1940,11 +1991,13 @@ function applyFifoSell(lineId,type,sellMb){
   const result=computeFifoCost(lineId,type,sellMb);
   if(!result) return null;
   const bandos=getBandos();
+  const usedBandos=[];
   for(const{bando,mbUsed}of result.used){
     const idx=bandos.findIndex(b=>b.id===bando.id);
     if(idx>=0){
       bandos[idx].usedMb=(bandos[idx].usedMb||0)+mbUsed;
       if(bandoMbLeft(bandos[idx])<=0.5) bandos[idx].active=false;
+      usedBandos.push({bandoId:bando.id, mbUsed});
     }
   }
   saveBandos(bandos);
@@ -1954,7 +2007,35 @@ function applyFifoSell(lineId,type,sellMb){
     else              lines[li].mbMonth=Math.max(0,(lines[li].mbMonth||0)-sellMb);
     saveLines(lines);
   }
-  return result.totalCost;
+  return {totalCost:result.totalCost, usedBandos};
+}
+
+function reverseFifoSell(lineId, type, sellMb, usedBandos){
+  const bandos=getBandos();
+  (usedBandos||[]).forEach(({bandoId,mbUsed})=>{
+    const idx=bandos.findIndex(b=>b.id===bandoId);
+    if(idx>=0){
+      bandos[idx].usedMb=Math.max(0,(bandos[idx].usedMb||0)-mbUsed);
+      bandos[idx].active=true;
+    }
+  });
+  saveBandos(bandos);
+  const lines=getLines(),li=lines.findIndex(l=>l.id===lineId);
+  if(li>=0){
+    if(type==='week') lines[li].mbWeek=(lines[li].mbWeek||0)+sellMb;
+    else              lines[li].mbMonth=(lines[li].mbMonth||0)+sellMb;
+    saveLines(lines);
+  }
+}
+
+function decrementLineSlot(lineId,type){
+  const slots=getSlots(),today=todayStr();
+  const idx=slots.findIndex(s=>s.lineId===lineId&&s.date===today);
+  if(idx>=0){
+    if(type==='week') slots[idx].weekUsed=Math.max(0,slots[idx].weekUsed-1);
+    else              slots[idx].monthUsed=Math.max(0,slots[idx].monthUsed-1);
+    saveSlots(slots);
+  }
 }
 
 let currentBalanceSource='faida';
@@ -3934,6 +4015,99 @@ function deleteCustomer(phone){
   openModal('modalConfirm');
 }
 
+// ============================================================
+// BACKUP NA RESTORE
+// ============================================================
+function downloadFullBackup(){
+  const backup = {
+    exportedAt: new Date().toISOString(),
+    businessId: BUSINESS_ID,
+    version: 'BandoManager v2.0',
+    data: {
+      lines: _cache.lines || [],
+      sales: _cache.sales || [],
+      transactions: _cache.transactions || [],
+      slots: _cache.slots || [],
+      calcRecords: _cache.calcRecords || [],
+      loans: _cache.loans || [],
+      bandos: _cache.bandos || [],
+      customers: _cache.customers || [],
+      orders: _cache.orders || [],
+      meta: {
+        lastDate: _cache.lastDate || null,
+        orderCounter: _cache.orderCounter || 0,
+        assistantPhone: _cache.assistantPhone || ''
+      }
+    }
+  };
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `bandomanager-backup-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  const totalRecords = backup.data.lines.length + backup.data.sales.length + backup.data.bandos.length + backup.data.customers.length + backup.data.loans.length + backup.data.orders.length;
+  const st = document.getElementById('backupStatus');
+  if(st) st.textContent = `✓ Backup imepakuliwa (${totalRecords} rekodi jumla) — ${new Date().toLocaleString('sw-TZ')}`;
+  showToast('✓ Backup imepakuliwa','success');
+}
+
+function onRestoreFileSelected(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    let parsed;
+    try {
+      parsed = JSON.parse(e.target.result);
+    } catch(err){
+      showToast('❌ Faili si JSON sahihi','error');
+      event.target.value = '';
+      return;
+    }
+    if(!parsed || !parsed.data || !Array.isArray(parsed.data.lines)){
+      showToast('❌ Faili hili si backup halali ya BandoManager','error');
+      event.target.value = '';
+      return;
+    }
+    const d = parsed.data;
+    const counts = `Laini: ${(d.lines||[]).length}, Mauzo: ${(d.sales||[]).length}, Mabando: ${(d.bandos||[]).length}, Wateja: ${(d.customers||[]).length}, Mikopo: ${(d.loans||[]).length}, Orders: ${(d.orders||[]).length}`;
+    document.getElementById('confirmMessage').textContent =
+      `⚠️ Utabadilisha data YOTE ya sasa na hii ya backup (tarehe: ${parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleString('sw-TZ') : 'haijulikani'}).\n${counts}\nHatua hii haiwezi kurudishwa nyuma. Endelea?`;
+    document.getElementById('confirmBtn').onclick = ()=>{
+      closeModal('modalConfirm');
+      applyRestore(d);
+    };
+    openModal('modalConfirm');
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function applyRestore(d){
+  showToast('⏳ Inarudisha data...','');
+  if(Array.isArray(d.lines))        saveLines(d.lines);
+  if(Array.isArray(d.sales))        saveSales(d.sales);
+  if(Array.isArray(d.transactions)) saveTransactions(d.transactions);
+  if(Array.isArray(d.slots))        saveSlots(d.slots);
+  if(Array.isArray(d.calcRecords))  saveCalcRecords(d.calcRecords);
+  if(Array.isArray(d.loans))        saveLoans(d.loans);
+  if(Array.isArray(d.bandos))       saveBandos(d.bandos);
+  if(Array.isArray(d.customers))    saveCustomerProfiles(d.customers);
+  if(Array.isArray(d.orders))       savePendingOrders(d.orders);
+  if(d.meta){
+    _cache.lastDate      = d.meta.lastDate || _cache.lastDate;
+    _cache.orderCounter  = d.meta.orderCounter || 0;
+    _cache.assistantPhone= d.meta.assistantPhone || '';
+    _orderCounter = _cache.orderCounter;
+    saveMeta();
+  }
+  showToast('✅ Data imerudishwa — ukurasa unapakua upya...','success');
+  setTimeout(()=>location.reload(), 1500);
+}
+
 function downloadCustomers(){
   const customers = buildCustomerDb();
   if(!customers.length) return showToast('Hakuna wateja wa kupakua','error');
@@ -3965,10 +4139,11 @@ function downloadCustomers(){
 // ORDERS PAGE
 // ============================================================
 function getPendingOrders(){
-  return JSON.parse(localStorage.getItem('bm_pending_orders')||'[]');
+  return _cache.orders || [];
 }
 function savePendingOrders(orders){
-  localStorage.setItem('bm_pending_orders', JSON.stringify(orders));
+  _cache.orders = orders;
+  saveDocToFirestore('orders', orders);
 }
 
 function renderOrdersPage(){
@@ -3997,13 +4172,13 @@ function renderOrdersPage(){
           </div>
           <span style="font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:6px;background:rgba(251,191,36,.15);color:var(--warning)">⏳ Inasubiri</span>
         </div>
-        <div style="background:var(--bg3);border-radius:8px;padding:.7rem;font-size:.82rem;line-height:1.8;margin-bottom:.85rem;font-family:monospace">
+        <div style="background:var(--bg3);border-radius:8px;padding:.7rem;font-size:.82rem;line-height:1.8;margin-bottom:.85rem;font-family:monospace;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;max-width:100%;overflow-x:auto">
 🔔 ORDER #${o.orderNo}
-━━━━━━━━━━━━
+────────────
 📦 MB: ${o.mb} (${o.type==='week'?'WIKI':'MWEZI'})
 📱 Laini: ${o.lineSimNo||'—'} - ${o.lineDevice||'—'}
 👤 Namba: ${o.buyerPhone}
-━━━━━━━━━━━━</div>
+────────────</div>
         <div style="display:flex;gap:.5rem">
           <button class="btn btn-ghost btn-sm" onclick="copyPendingOrder('${o.orderNo}')">📋 Nakili</button>
           <button class="btn btn-ghost btn-sm" onclick="editPendingOrderPrice('${o.orderNo}')" style="border-color:var(--accent);color:var(--accent)">✏️ Bei: ${o.sellingPrice?fmt(o.sellingPrice):'HAIJAWEKWA'}</button>
@@ -4101,36 +4276,38 @@ async function confirmAllOrders(){
 }
 
 async function processOrderDone(o){
-  // Jaza mauzo
-  const lines  = getLines();
-  const line   = lines.find(l=>l.id===o.lineId);
+  const lines = getLines();
+  const line  = lines.find(l=>l.id===o.lineId);
   if(!line) return;
-  const slots  = getLineSlots(o.lineId);
-  const type   = o.type;
-  if(type==='week'  && slots.weekUsed >=MAX_WEEK)  return;
-  if(type==='month' && slots.monthUsed>=MAX_MONTH) return;
 
-  // FIFO sell
-  const fifoResult = computeFifoCost(o.lineId, type, o.mb);
-  if(!fifoResult){ console.log('FIFO failed for order',o.orderNo); return; }
-  const costShare = fifoResult.totalCost;
-  const amount    = parseFloat(o.sellingPrice)||0;
-  const profit    = amount - costShare;
+  let cost = o.cost;
 
-  // Thibitisha MB zimepungua kabla ya kuendelea
-  applyFifoSell(o.lineId, type, o.mb);
+  // Backward-compat: order za zamani (kabla ya reservation system) hazina cost/usedBandos
+  if(cost===undefined || cost===null){
+    const slots = getLineSlots(o.lineId);
+    if(o.type==='week'  && slots.weekUsed >=MAX_WEEK)  { showToast(`⚠️ Slots za Wiki zimekwisha kwa ORDER #${o.orderNo}`,'error'); return; }
+    if(o.type==='month' && slots.monthUsed>=MAX_MONTH) { showToast(`⚠️ Slots za Mwezi zimekwisha kwa ORDER #${o.orderNo}`,'error'); return; }
+    const fifoResult = computeFifoCost(o.lineId, o.type, o.mb);
+    if(!fifoResult){ showToast(`❌ MB haitoshi kwa ORDER #${o.orderNo}`,'error'); return; }
+    const applied = applyFifoSell(o.lineId, o.type, o.mb);
+    cost = applied.totalCost;
+    updateLineSlots(o.lineId, o.type);
+  }
+  // Order mpya — MB na slot tayari zimehifadhiwa wakati wa "Hifadhi Order"
+
+  const amount = parseFloat(o.sellingPrice)||0;
+  const profit = amount - cost;
 
   const sales = getSales();
   sales.push({
-    id:uid(), lineId:o.lineId, lineName:line.name, linePhone:line.phone,
-    type, costPrice:costShare, sellingPrice:amount, profit,
+    id:uid(), lineId:o.lineId, lineName:o.lineName||line.name, linePhone:line.phone,
+    type:o.type, costPrice:cost, sellingPrice:amount, profit,
     mb:fmtMB(o.mb), sellMb:o.mb,
     buyerPhone:o.buyerPhone||null,
     orderNo:o.orderNo,
     date:new Date().toISOString()
   });
   saveSales(sales);
-  updateLineSlots(o.lineId, type);
 
   // Tuma SMS kwa mteja
   if(o.buyerPhone){
@@ -4149,14 +4326,21 @@ async function processOrderDone(o){
 }
 
 function cancelOrder(orderNo){
-  document.getElementById('confirmMessage').textContent = `Futa ORDER #${orderNo}?`;
+  document.getElementById('confirmMessage').textContent = `Futa ORDER #${orderNo}? MB na slot zilizohifadhiwa zitarudishwa kwenye laini.`;
   document.getElementById('confirmBtn').onclick = ()=>{
-    const orders = getPendingOrders().filter(o=>o.orderNo!==orderNo);
-    savePendingOrders(orders);
+    const orders = getPendingOrders();
+    const o = orders.find(x=>x.orderNo===orderNo);
+    if(o && o.status==='pending' && o.usedBandos){
+      reverseFifoSell(o.lineId, o.type, o.mb, o.usedBandos);
+      decrementLineSlot(o.lineId, o.type);
+    }
+    const updated = orders.filter(x=>x.orderNo!==orderNo);
+    savePendingOrders(updated);
     closeModal('modalConfirm');
-    showToast(`ORDER #${orderNo} imefutwa`,'success');
+    showToast(`ORDER #${orderNo} imefutwa — MB/slot vimerudishwa`,'success');
     renderOrdersPage();
     renderPendingOrdersBadge();
+    renderAll();
   };
   openModal('modalConfirm');
 }
@@ -4215,12 +4399,13 @@ function openManualOrder(){
 // ============================================================
 // ORDER SYSTEM
 // ============================================================
-let _orderCounter = parseInt(localStorage.getItem('bm_order_counter')||'0');
+let _orderCounter = 0; // itasasishwa kutoka Firestore baada ya initFirebase
 let _pendingOrder = null;
 
 function nextOrderNo(){
   _orderCounter++;
-  localStorage.setItem('bm_order_counter', _orderCounter);
+  _cache.orderCounter = _orderCounter;
+  saveMeta();
   return String(_orderCounter).padStart(3,'0');
 }
 
@@ -4284,33 +4469,81 @@ function copyOrderMsg(){
     });
 }
 
-function confirmOrder(){
+async function sendOrderSmsToAssistant(msg){
+  const phoneRaw = (_cache.assistantPhone||'').trim();
+  if(!phoneRaw){
+    // Hakuna namba iliyowekwa — nakili tu kama zamani
+    copyOrderMsg();
+    showToast('⚠️ Weka namba ya Assistant kwenye Mipangilio ili SMS itumwe moja kwa moja','warning');
+    return false;
+  }
+  let phone = phoneRaw.replace(/\s+/g,'');
+  if(phone.startsWith('0')) phone='255'+phone.slice(1);
+  if(phone.startsWith('+')) phone=phone.slice(1);
+  try {
+    const res  = await fetch('https://nextsms-proxy.hanshannu9.workers.dev',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({to:phone, text:msg})
+    });
+    const data = await res.json();
+    if(res.ok && !data.error){
+      showToast('✅ SMS imetumwa kwa Assistant moja kwa moja!','success');
+      return true;
+    } else {
+      copyOrderMsg();
+      showToast('⚠️ SMS haikutumwa — ujumbe umenakiliwa, tuma mwenyewe','warning');
+      return false;
+    }
+  } catch(e){
+    copyOrderMsg();
+    showToast('⚠️ Tatizo la mtandao — ujumbe umenakiliwa, tuma mwenyewe','warning');
+    return false;
+  }
+}
+
+async function confirmOrder(){
   const phone = document.getElementById('orderBuyerPhone').value.trim();
   const sellingPrice = parseFloat(document.getElementById('orderSellingPrice').value)||0;
   if(!phone) return showToast('Ingiza namba ya mteja kwanza','error');
   if(!sellingPrice) return showToast('Ingiza bei ya kuuzia','error');
+
+  const {lineId, type, mb, orderNo, line, mbLabel} = _pendingOrder;
+
+  // Angalia tena kabla ya kuhifadhi — MB na slot bado zipo?
+  const slots = getLineSlots(lineId);
+  if(type==='week'  && slots.weekUsed >=MAX_WEEK)  return showToast('⚠️ Slots za Wiki zimekwisha kwa laini hii!','error');
+  if(type==='month' && slots.monthUsed>=MAX_MONTH) return showToast('⚠️ Slots za Mwezi zimekwisha kwa laini hii!','error');
+
+  const fifoResult = computeFifoCost(lineId, type, mb);
+  if(!fifoResult) return showToast('❌ MB haitoshi tena kwa laini hii — chagua laini nyingine','error');
+
+  // HIFADHI (RESERVE) — punguza MB na ongeza slot MARA MOJA
+  const applied = applyFifoSell(lineId, type, mb);
+  updateLineSlots(lineId, type);
+
   updateOrderPreview();
-  copyOrderMsg();
+
   const orders = getPendingOrders();
   orders.push({
-    orderNo: _pendingOrder.orderNo,
-    lineId: _pendingOrder.lineId,
-    type: _pendingOrder.type,
-    mb: _pendingOrder.mb,
-    mbLabel: _pendingOrder.mbLabel,
+    orderNo, lineId, type, mb, mbLabel,
     buyerPhone: phone,
     sellingPrice,
-    cost: _pendingOrder.cost||0,
-    lineName: _pendingOrder.line.name,
-    lineDevice: _pendingOrder.line.device,
-    lineSimNo: _pendingOrder.line.simNo,
+    cost: applied.totalCost,
+    usedBandos: applied.usedBandos,
+    lineName: line.name,
+    lineDevice: line.device,
+    lineSimNo: line.simNo,
     status: 'pending',
     createdAt: new Date().toISOString()
   });
   savePendingOrders(orders);
   closeModal('modalOrder');
-  showToast(`✓ ORDER #${_pendingOrder.orderNo} — Bei: ${fmt(sellingPrice)}`,'success');
+
+  // Tuma SMS moja kwa moja kwa Assistant (au nakili kama namba haipo)
+  await sendOrderSmsToAssistant(_pendingOrder.msg);
+
   renderPendingOrdersBadge();
+  renderAll();
 }
 
 function renderPendingOrdersBadge(){
@@ -4510,6 +4743,13 @@ function navigateTo(page){
     const bp = document.getElementById('bossPhoneInput');
     if(bp) bp.value = localStorage.getItem('bm_boss_phone')||'';
     saveBossPhone();
+    const ap = document.getElementById('assistantPhoneInput');
+    if(ap) ap.value = _cache.assistantPhone||'';
+    const apSt = document.getElementById('assistantPhoneStatus');
+    if(apSt){
+      if(_cache.assistantPhone){ apSt.textContent='✅ Order zote zitatumwa SMS moja kwa moja kwa namba hii'; apSt.style.color='var(--success)'; }
+      else { apSt.textContent='Hakuna namba — utahitaji kunakili ujumbe mwenyewe'; apSt.style.color='var(--text3)'; }
+    }
     const on = document.getElementById('currentOrderNo');
     if(on) on.value = _orderCounter;
   }
