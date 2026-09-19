@@ -1165,6 +1165,10 @@ canvas{display:block;width:100%!important}
       <label>Namba ya Mteja</label>
       <input type="text" id="orderBuyerPhone" placeholder="e.g. 0637604108" oninput="updateOrderPreview()"/>
     </div>
+    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;font-size:.85rem">
+      <input type="checkbox" id="orderSmsToggle" checked style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer"/>
+      <label for="orderSmsToggle" style="cursor:pointer;color:var(--text2);text-transform:none;letter-spacing:0;font-size:.85rem;font-weight:400">📱 Mtumie mteja SMS ya "Hongera" atakapokamilika (Done)</label>
+    </div>
     <div class="form-row">
       <div class="form-group">
         <label>Bei ya Kuuzia (TSh)</label>
@@ -4170,7 +4174,10 @@ function renderOrdersPage(){
             <div style="font-size:1rem;font-weight:700;color:var(--accent)">ORDER #${o.orderNo}</div>
             <div style="font-size:.8rem;color:var(--text2);margin-top:.2rem">${fmtDateTime(o.createdAt)}</div>
           </div>
-          <span style="font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:6px;background:rgba(251,191,36,.15);color:var(--warning)">⏳ Inasubiri</span>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.3rem">
+            <span style="font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:6px;background:rgba(251,191,36,.15);color:var(--warning)">⏳ Inasubiri</span>
+            <span style="font-size:.65rem;color:${o.sendSmsToCustomer!==false?'var(--success)':'var(--text3)'}">${o.sendSmsToCustomer!==false?'📱 Mteja atatumiwa SMS':'🔕 Bila SMS kwa mteja'}</span>
+          </div>
         </div>
         <div style="background:var(--bg3);border-radius:8px;padding:.7rem;font-size:.82rem;line-height:1.8;margin-bottom:.85rem;font-family:monospace;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;max-width:100%;overflow-x:auto">
 🔔 ORDER #${o.orderNo}
@@ -4310,8 +4317,9 @@ async function processOrderDone(o){
   });
   saveSales(sales);
 
-  // Tuma SMS kwa mteja
-  if(o.buyerPhone){
+  // Tuma SMS kwa mteja — isipokuwa kama tick ilitolewa wakati wa order
+  const wantsSms = o.sendSmsToCustomer !== false;
+  if(o.buyerPhone && wantsSms){
     const mbLabel = fmtMB(o.mb);
     const smsMsg  = buildSmsMessage(mbLabel, amount);
     let phone = o.buyerPhone.replace(/\s+/g,'');
@@ -4437,6 +4445,8 @@ function openOrderModal(lineId, type, mb){
   const costEl = document.getElementById('orderCostPreview');
   if(costEl)  costEl.value  = fifo ? fmt(cost) : '—';
   document.getElementById('orderBuyerPhone').value = '';
+  const smsToggle = document.getElementById('orderSmsToggle');
+  if(smsToggle) smsToggle.checked = true;
   updateOrderPreview();
   openModal('modalOrder');
   setTimeout(()=>document.getElementById('orderBuyerPhone').focus(), 200);
@@ -4525,6 +4535,7 @@ async function confirmOrder(){
   updateOrderPreview();
 
   const orders = getPendingOrders();
+  const sendSmsToCustomer = document.getElementById('orderSmsToggle')?.checked !== false;
   orders.push({
     orderNo, lineId, type, mb, mbLabel,
     buyerPhone: phone,
@@ -4534,6 +4545,7 @@ async function confirmOrder(){
     lineName: line.name,
     lineDevice: line.device,
     lineSimNo: line.simNo,
+    sendSmsToCustomer,
     status: 'pending',
     createdAt: new Date().toISOString()
   });
