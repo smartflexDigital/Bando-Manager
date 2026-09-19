@@ -4178,7 +4178,8 @@ function renderOrdersPage(){
 📦 MB: ${o.mb} (${o.type==='week'?'WIKI':'MWEZI'})
 📱 Laini: ${o.lineSimNo||'—'} - ${o.lineDevice||'—'}
 👤 Namba: ${o.buyerPhone}
-────────────</div>
+────────────
+Reply: DONE#${o.orderNo}</div>
         <div style="display:flex;gap:.5rem">
           <button class="btn btn-ghost btn-sm" onclick="copyPendingOrder('${o.orderNo}')">📋 Nakili</button>
           <button class="btn btn-ghost btn-sm" onclick="editPendingOrderPrice('${o.orderNo}')" style="border-color:var(--accent);color:var(--accent)">✏️ Bei: ${o.sellingPrice?fmt(o.sellingPrice):'HAIJAWEKWA'}</button>
@@ -4209,7 +4210,7 @@ function renderOrdersPage(){
 function copyPendingOrder(orderNo){
   const o = getPendingOrders().find(o=>o.orderNo===orderNo);
   if(!o) return;
-  const msg = `🔔 ORDER #${o.orderNo}\n━━━━━━━━━━━━\n📦 MB: ${o.mb} (${o.type==='week'?'WIKI':'MWEZI'})\n📱 Laini: ${o.lineSimNo||'—'} - ${o.lineDevice||'—'}\n👤 Namba: ${o.buyerPhone}\n━━━━━━━━━━━━`;
+  const msg = `🔔 ORDER #${o.orderNo}\n━━━━━━━━━━━━\n📦 MB: ${o.mb} (${o.type==='week'?'WIKI':'MWEZI'})\n📱 Laini: ${o.lineSimNo||'—'} - ${o.lineDevice||'—'}\n👤 Namba: ${o.buyerPhone}\n━━━━━━━━━━━━\nReply: DONE#${o.orderNo}`;
   navigator.clipboard?.writeText(msg)
     .then(()=>showToast(`✓ ORDER #${orderNo} umenakiliwa`,'success'))
     .catch(()=>{ const ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('✓ Umenakiliwa','success'); });
@@ -4446,7 +4447,7 @@ function updateOrderPreview(){
   const {line, mbLabel, orderNo} = _pendingOrder;
   const typeLabel = _pendingOrder.type==='week'?'WIKI':'MWEZI';
   const phone = document.getElementById('orderBuyerPhone')?.value.trim() || '—';
-  const msg = `🔔 ORDER #${orderNo}\n━━━━━━━━━━━━\n📦 MB: ${_pendingOrder.mb} (${typeLabel})\n📱 Laini: ${line.simNo||'SIM1'} - ${line.device||'—'}\n👤 Namba: ${phone}\n━━━━━━━━━━━━`;
+  const msg = `🔔 ORDER #${orderNo}\n━━━━━━━━━━━━\n📦 MB: ${_pendingOrder.mb} (${typeLabel})\n📱 Laini: ${line.simNo||'SIM1'} - ${line.device||'—'}\n👤 Namba: ${phone}\n━━━━━━━━━━━━\nReply: DONE#${orderNo}`;
   const el = document.getElementById('orderMsgPreview');
   if(el) el.textContent = msg;
   _pendingOrder.msg = msg;
