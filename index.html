@@ -4142,6 +4142,12 @@ function downloadCustomers(){
 // ============================================================
 // ORDERS PAGE
 // ============================================================
+async function refreshOrdersFromFirestore(){
+  const fresh = await loadDocFromFirestore('orders', []);
+  _cache.orders = fresh;
+  return fresh;
+}
+
 function getPendingOrders(){
   return _cache.orders || [];
 }
@@ -4223,10 +4229,11 @@ function copyPendingOrder(orderNo){
     .catch(()=>{ const ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('✓ Umenakiliwa','success'); });
 }
 
-function editPendingOrderPrice(orderNo){
+async function editPendingOrderPrice(orderNo){
+  await refreshOrdersFromFirestore();
   const orders = getPendingOrders();
   const o = orders.find(x=>x.orderNo===orderNo);
-  if(!o) return;
+  if(!o) return showToast(`⚠️ ORDER #${orderNo} haipo tena`,'warning');
   const newPrice = prompt(`Ingiza bei ya kuuzia kwa ORDER #${orderNo}\n(${o.mb}MB, Gharama: ${fmt(o.cost||0)}):`, o.sellingPrice||'');
   if(newPrice===null) return; // Ghairi
   const price = parseFloat(newPrice);
@@ -4238,25 +4245,45 @@ function editPendingOrderPrice(orderNo){
   renderOrdersPage();
 }
 
+const _processingOrders = new Set();
+
 async function confirmSingleOrder(orderNo){
-  const orders = getPendingOrders();
-  const idx    = orders.findIndex(o=>o.orderNo===orderNo);
-  if(idx<0) return;
-  const o = orders[idx];
-  if(!o.sellingPrice || o.sellingPrice<=0){
-    return showToast(`⚠️ ORDER #${orderNo} haina bei — bonyeza "✏️ Bei" kwanza`,'error');
+  if(_processingOrders.has(orderNo)) return; // zuia double-click
+  _processingOrders.add(orderNo);
+  try {
+    await refreshOrdersFromFirestore(); // pata hali ya hivi karibuni kutoka kila kifaa
+    const orders = getPendingOrders();
+    const idx    = orders.findIndex(o=>o.orderNo===orderNo);
+    if(idx<0){
+      showToast(`⚠️ ORDER #${orderNo} haipo tena`,'warning');
+      renderOrdersPage();
+      return;
+    }
+    const o = orders[idx];
+    if(o.status==='done'){
+      showToast(`ORDER #${orderNo} tayari imekamilika`,'warning');
+      renderOrdersPage();
+      return;
+    }
+    if(!o.sellingPrice || o.sellingPrice<=0){
+      showToast(`⚠️ ORDER #${orderNo} haina bei — bonyeza "✏️ Bei" kwanza`,'error');
+      return;
+    }
+    await processOrderDone(o);
+    orders[idx].status  = 'done';
+    orders[idx].doneAt  = new Date().toISOString();
+    savePendingOrders(orders);
+    showToast(`✅ ORDER #${orderNo} imekamilika — mauzo yamejazwa!`,'success');
+    renderOrdersPage();
+    renderPendingOrdersBadge();
+    renderAll();
+  } finally {
+    _processingOrders.delete(orderNo);
   }
-  await processOrderDone(o);
-  orders[idx].status  = 'done';
-  orders[idx].doneAt  = new Date().toISOString();
-  savePendingOrders(orders);
-  showToast(`✅ ORDER #${orderNo} imekamilika — mauzo yamejazwa!`,'success');
-  renderOrdersPage();
-  renderPendingOrdersBadge();
-  renderAll();
 }
 
 async function confirmAllOrders(){
+  await refreshOrdersFromFirestore();
   const orders  = getPendingOrders();
   const pending = orders.filter(o=>o.status==='pending');
   if(!pending.length) return showToast('Hakuna orders za kukonfirm','error');
@@ -4336,10 +4363,17 @@ async function processOrderDone(o){
 
 function cancelOrder(orderNo){
   document.getElementById('confirmMessage').textContent = `Futa ORDER #${orderNo}? MB na slot zilizohifadhiwa zitarudishwa kwenye laini.`;
-  document.getElementById('confirmBtn').onclick = ()=>{
+  document.getElementById('confirmBtn').onclick = async ()=>{
+    await refreshOrdersFromFirestore();
     const orders = getPendingOrders();
     const o = orders.find(x=>x.orderNo===orderNo);
-    if(o && o.status==='pending' && o.usedBandos){
+    if(!o){
+      closeModal('modalConfirm');
+      showToast(`⚠️ ORDER #${orderNo} haipo tena`,'warning');
+      renderOrdersPage();
+      return;
+    }
+    if(o.status==='pending' && o.usedBandos){
       reverseFifoSell(o.lineId, o.type, o.mb, o.usedBandos);
       decrementLineSlot(o.lineId, o.type);
     }
@@ -4742,7 +4776,10 @@ function navigateTo(page){
   if(page==='balance'){updateBalancePage();updateBalancePreview()}
   if(page==='reports')renderReports();
   if(page==='loans'){renderLoans();}
-  if(page==='orders'){ renderOrdersPage(); }
+  if(page==='orders'){
+    renderOrdersPage(); // onyesha haraka na data ya sasa hivi
+    refreshOrdersFromFirestore().then(()=>renderOrdersPage()); // kisha sasisha na data mpya zaidi
+  }
   if(page==='customers'){ renderCustomers(); }
   if(page==='finder'){
     finderBuildGbBtns();
