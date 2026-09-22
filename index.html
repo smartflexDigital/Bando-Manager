@@ -167,7 +167,7 @@ canvas{display:block;width:100%!important}
 .ssc-slot-val.full-slot{color:var(--warning)}.ssc-slot-val.ok-slot{color:var(--success)}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:200;align-items:center;justify-content:center;padding:1rem}
 .modal-overlay.open{display:flex}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.5rem;width:100%;max-width:440px;animation:modalIn .2s ease}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.5rem;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;animation:modalIn .2s ease}
 .modal.modal-sm{max-width:340px}
 @keyframes modalIn{from{opacity:0;transform:scale(.95) translateY(-8px)}to{opacity:1;transform:none}}
 .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
@@ -958,10 +958,10 @@ canvas{display:block;width:100%!important}
         <p style="font-size:.83rem;color:var(--text2);margin-bottom:1rem">Ukibonyeza "Hifadhi Order", SMS ya order itatumwa moja kwa moja kwa namba hii kupitia NextSMS — bila kunakili au WhatsApp.</p>
         <div class="form-group">
           <label>Namba ya Simu ya Assistant</label>
-          <input type="text" id="assistantPhoneInput" placeholder="e.g. 0712345678"
-            value="" oninput="saveAssistantPhone()"/>
+          <input type="text" id="assistantPhoneInput" placeholder="e.g. 0712345678" value=""/>
         </div>
-        <div id="assistantPhoneStatus" style="font-size:.8rem;margin-top:.25rem"></div>
+        <button class="btn btn-primary btn-full" onclick="saveAssistantPhone()">💾 Hifadhi Namba ya Assistant</button>
+        <div id="assistantPhoneStatus" style="font-size:.8rem;margin-top:.5rem"></div>
       </div>
 
       <!-- BACKUP NA RESTORE -->
@@ -1164,10 +1164,6 @@ canvas{display:block;width:100%!important}
     <div class="form-group">
       <label>Namba ya Mteja</label>
       <input type="text" id="orderBuyerPhone" placeholder="e.g. 0637604108" oninput="updateOrderPreview()"/>
-    </div>
-    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;font-size:.85rem">
-      <input type="checkbox" id="orderSmsToggle" checked style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer"/>
-      <label for="orderSmsToggle" style="cursor:pointer;color:var(--text2);text-transform:none;letter-spacing:0;font-size:.85rem;font-weight:400">📱 Mtumie mteja SMS ya "Hongera" atakapokamilika (Done)</label>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -1645,7 +1641,10 @@ async function initFirebase(){
     _cache.lastDate = metaDoc && metaDoc.lastDate ? metaDoc.lastDate : null;
     _cache.orderCounter = metaDoc && metaDoc.orderCounter ? metaDoc.orderCounter : 0;
     _cache.assistantPhone = metaDoc && metaDoc.assistantPhone ? metaDoc.assistantPhone : '';
-    _cache.loans=loans; _cache.bandos=bandos; _cache.customers=customers; _cache.orders=orders;
+    _cache.loans=loans; _cache.bandos=bandos; _cache.customers=customers;
+    const _orderMigration = migrateOrderIds(orders);
+    _cache.orders = _orderMigration.orders;
+    if(_orderMigration.changed) saveDocToFirestore('orders', _cache.orders);
     _orderCounter = _cache.orderCounter;
     fbReady=true;
     await loadPinFromFirestore();
@@ -1929,7 +1928,7 @@ function updateBandoPreview(){
   }).join('');
 }
 
-function buyBando(){
+async function buyBando(){
   const lineId  =document.getElementById('balanceLine').value;
   const buyPrice=parseFloat(document.getElementById('bandoBuyPrice').value)||0;
   const totalMb =parseFloat(document.getElementById('bandoTotalMb').value)||0;
@@ -1938,6 +1937,7 @@ function buyBando(){
   if(!lineId)   return showToast('Chagua laini kwanza','error');
   if(!buyPrice) return showToast('Ingiza bei uliyolipa','error');
   if(!totalMb)  return showToast('Ingiza MB ulizopewa','error');
+  await refreshInventoryFromFirestore(); // data ya hivi karibuni kabla ya kuandika
   const bandos=getBandos();
   bandos.push({id:uid(),lineId,type,buyPrice,totalMb,usedMb:0,source,active:true,date:new Date().toISOString()});
   saveBandos(bandos);
@@ -2373,7 +2373,7 @@ function updateSellSlotInfo(){
   updateSellMbStatus();
 }
 
-function sellBundle(){
+async function sellBundle(){
   const lineId  = document.getElementById('sellLine').value;
   const sellMb  = parseFloat(document.getElementById('sellMbAmount').value)||0;
   const amount  = parseFloat(document.getElementById('sellAmount').value);
@@ -2382,6 +2382,7 @@ function sellBundle(){
   if(!lineId)  return showToast('Chagua laini','error');
   if(!sellMb)  return showToast('Ingiza MB unazouza','error');
   if(!amount||amount<=0) return showToast('Ingiza bei ya kuuza','error');
+  await refreshInventoryFromFirestore(); // data ya hivi karibuni kabla ya kuandika
   const lines = getLines();
   const idx   = lines.findIndex(l=>l.id===lineId);
   if(idx<0) return;
@@ -4142,10 +4143,38 @@ function downloadCustomers(){
 // ============================================================
 // ORDERS PAGE
 // ============================================================
+// Order za zamani (kabla ya mfumo wa .id ya kipekee) zinaweza kukosa .id —
+// hii inaziongezea id ya kipekee kila zinapopakiwa, ikizuia mgongano wa
+// order mbili zenye orderNo sawa (mfano #020 x2 kutoka vifaa tofauti)
+function migrateOrderIds(orders){
+  let changed = false;
+  orders.forEach(o=>{
+    if(!o.id){ o.id = uid(); changed = true; }
+  });
+  return {orders, changed};
+}
+
 async function refreshOrdersFromFirestore(){
-  const fresh = await loadDocFromFirestore('orders', []);
+  let fresh = await loadDocFromFirestore('orders', []);
+  const {orders, changed} = migrateOrderIds(fresh);
+  fresh = orders;
   _cache.orders = fresh;
+  if(changed) saveDocToFirestore('orders', fresh); // hifadhi id mpya zilizoongezwa
   return fresh;
+}
+
+// Soma upya Laini/Mabando/Slots kutoka Firestore kabla ya kufanya operesheni
+// zinazobadilisha MB au slots — hii inapunguza mgongano wa data kati ya vifaa
+// tofauti (simu na PC) vinapofanya kazi karibu wakati mmoja.
+async function refreshInventoryFromFirestore(){
+  const [lines, bandos, slots] = await Promise.all([
+    loadDocFromFirestore('lines', []),
+    loadDocFromFirestore('bandos', []),
+    loadDocFromFirestore('slots', [])
+  ]);
+  _cache.lines  = lines;
+  _cache.bandos = bandos;
+  _cache.slots  = slots;
 }
 
 function getPendingOrders(){
@@ -4180,10 +4209,7 @@ function renderOrdersPage(){
             <div style="font-size:1rem;font-weight:700;color:var(--accent)">ORDER #${o.orderNo}</div>
             <div style="font-size:.8rem;color:var(--text2);margin-top:.2rem">${fmtDateTime(o.createdAt)}</div>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.3rem">
-            <span style="font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:6px;background:rgba(251,191,36,.15);color:var(--warning)">⏳ Inasubiri</span>
-            <span style="font-size:.65rem;color:${o.sendSmsToCustomer!==false?'var(--success)':'var(--text3)'}">${o.sendSmsToCustomer!==false?'📱 Mteja atatumiwa SMS':'🔕 Bila SMS kwa mteja'}</span>
-          </div>
+          <span style="font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:6px;background:rgba(251,191,36,.15);color:var(--warning)">⏳ Inasubiri</span>
         </div>
         <div style="background:var(--bg3);border-radius:8px;padding:.7rem;font-size:.82rem;line-height:1.8;margin-bottom:.85rem;font-family:monospace;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;max-width:100%;overflow-x:auto">
 🔔 ORDER #${o.orderNo}
@@ -4193,11 +4219,17 @@ function renderOrdersPage(){
 👤 Namba: ${o.buyerPhone}
 ────────────
 Reply: DONE#${o.orderNo}</div>
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;font-size:.82rem;background:var(--bg3);border-radius:8px;padding:.5rem .75rem">
+          <input type="checkbox" id="smsToggle_${o.id}" ${o.sendSmsToCustomer!==false?'checked':''}
+            onchange="toggleOrderSms('${o.id}', this.checked)"
+            style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer"/>
+          <label for="smsToggle_${o.id}" style="cursor:pointer;color:var(--text2);text-transform:none;letter-spacing:0;font-size:.82rem;font-weight:400">📱 Mtumie mteja SMS ya "Hongera" hapo Done itakapobonyezwa</label>
+        </div>
         <div style="display:flex;gap:.5rem">
-          <button class="btn btn-ghost btn-sm" onclick="copyPendingOrder('${o.orderNo}')">📋 Nakili</button>
-          <button class="btn btn-ghost btn-sm" onclick="editPendingOrderPrice('${o.orderNo}')" style="border-color:var(--accent);color:var(--accent)">✏️ Bei: ${o.sellingPrice?fmt(o.sellingPrice):'HAIJAWEKWA'}</button>
-          <button class="btn btn-success" style="flex:1" onclick="confirmSingleOrder('${o.orderNo}')">✅ Done</button>
-          <button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.orderNo}')">✕</button>
+          <button class="btn btn-ghost btn-sm" onclick="copyPendingOrder('${o.id}')">📋 Nakili</button>
+          <button class="btn btn-ghost btn-sm" onclick="editPendingOrderPrice('${o.id}')" style="border-color:var(--accent);color:var(--accent)">✏️ Bei: ${o.sellingPrice?fmt(o.sellingPrice):'HAIJAWEKWA'}</button>
+          <button class="btn btn-success" style="flex:1" onclick="confirmSingleOrder('${o.id}')">✅ Done</button>
+          <button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">✕</button>
         </div>
       </div>`).join('');
   }
@@ -4220,70 +4252,80 @@ Reply: DONE#${o.orderNo}</div>
   el.innerHTML = html;
 }
 
-function copyPendingOrder(orderNo){
-  const o = getPendingOrders().find(o=>o.orderNo===orderNo);
+function toggleOrderSms(id, checked){
+  const orders = getPendingOrders();
+  const idx = orders.findIndex(o=>o.id===id);
+  if(idx<0) return;
+  orders[idx].sendSmsToCustomer = checked;
+  savePendingOrders(orders);
+}
+
+function copyPendingOrder(id){
+  const o = getPendingOrders().find(o=>o.id===id);
   if(!o) return;
   const msg = `🔔 ORDER #${o.orderNo}\n━━━━━━━━━━━━\n📦 MB: ${o.mb} (${o.type==='week'?'WIKI':'MWEZI'})\n📱 Laini: ${o.lineSimNo||'—'} - ${o.lineDevice||'—'}\n👤 Namba: ${o.buyerPhone}\n━━━━━━━━━━━━\nReply: DONE#${o.orderNo}`;
   navigator.clipboard?.writeText(msg)
-    .then(()=>showToast(`✓ ORDER #${orderNo} umenakiliwa`,'success'))
+    .then(()=>showToast(`✓ ORDER #${o.orderNo} umenakiliwa`,'success'))
     .catch(()=>{ const ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('✓ Umenakiliwa','success'); });
 }
 
-async function editPendingOrderPrice(orderNo){
+async function editPendingOrderPrice(id){
   await refreshOrdersFromFirestore();
   const orders = getPendingOrders();
-  const o = orders.find(x=>x.orderNo===orderNo);
-  if(!o) return showToast(`⚠️ ORDER #${orderNo} haipo tena`,'warning');
-  const newPrice = prompt(`Ingiza bei ya kuuzia kwa ORDER #${orderNo}\n(${o.mb}MB, Gharama: ${fmt(o.cost||0)}):`, o.sellingPrice||'');
+  const o = orders.find(x=>x.id===id);
+  if(!o) return showToast(`⚠️ Order haipo tena`,'warning');
+  const newPrice = prompt(`Ingiza bei ya kuuzia kwa ORDER #${o.orderNo}\n(${o.mb}MB, Gharama: ${fmt(o.cost||0)}):`, o.sellingPrice||'');
   if(newPrice===null) return; // Ghairi
   const price = parseFloat(newPrice);
   if(!price || price<=0) return showToast('Bei si sahihi','error');
-  const idx = orders.findIndex(x=>x.orderNo===orderNo);
+  const idx = orders.findIndex(x=>x.id===id);
   orders[idx].sellingPrice = price;
   savePendingOrders(orders);
-  showToast(`✓ Bei ya ORDER #${orderNo} imewekwa: ${fmt(price)}`,'success');
+  showToast(`✓ Bei ya ORDER #${o.orderNo} imewekwa: ${fmt(price)}`,'success');
   renderOrdersPage();
 }
 
 const _processingOrders = new Set();
 
-async function confirmSingleOrder(orderNo){
-  if(_processingOrders.has(orderNo)) return; // zuia double-click
-  _processingOrders.add(orderNo);
+async function confirmSingleOrder(id){
+  if(_processingOrders.has(id)) return; // zuia double-click
+  _processingOrders.add(id);
   try {
     await refreshOrdersFromFirestore(); // pata hali ya hivi karibuni kutoka kila kifaa
+    await refreshInventoryFromFirestore();
     const orders = getPendingOrders();
-    const idx    = orders.findIndex(o=>o.orderNo===orderNo);
+    const idx    = orders.findIndex(o=>o.id===id);
     if(idx<0){
-      showToast(`⚠️ ORDER #${orderNo} haipo tena`,'warning');
+      showToast(`⚠️ Order haipo tena`,'warning');
       renderOrdersPage();
       return;
     }
     const o = orders[idx];
     if(o.status==='done'){
-      showToast(`ORDER #${orderNo} tayari imekamilika`,'warning');
+      showToast(`ORDER #${o.orderNo} tayari imekamilika`,'warning');
       renderOrdersPage();
       return;
     }
     if(!o.sellingPrice || o.sellingPrice<=0){
-      showToast(`⚠️ ORDER #${orderNo} haina bei — bonyeza "✏️ Bei" kwanza`,'error');
+      showToast(`⚠️ ORDER #${o.orderNo} haina bei — bonyeza "✏️ Bei" kwanza`,'error');
       return;
     }
     await processOrderDone(o);
     orders[idx].status  = 'done';
     orders[idx].doneAt  = new Date().toISOString();
     savePendingOrders(orders);
-    showToast(`✅ ORDER #${orderNo} imekamilika — mauzo yamejazwa!`,'success');
+    showToast(`✅ ORDER #${o.orderNo} imekamilika — mauzo yamejazwa!`,'success');
     renderOrdersPage();
     renderPendingOrdersBadge();
     renderAll();
   } finally {
-    _processingOrders.delete(orderNo);
+    _processingOrders.delete(id);
   }
 }
 
 async function confirmAllOrders(){
   await refreshOrdersFromFirestore();
+  await refreshInventoryFromFirestore();
   const orders  = getPendingOrders();
   const pending = orders.filter(o=>o.status==='pending');
   if(!pending.length) return showToast('Hakuna orders za kukonfirm','error');
@@ -4298,7 +4340,7 @@ async function confirmAllOrders(){
     showToast('⏳ Inakonfirm orders zote...','');
     for(const o of pending){
       await processOrderDone(o);
-      const idx = orders.findIndex(x=>x.orderNo===o.orderNo);
+      const idx = orders.findIndex(x=>x.id===o.id);
       if(idx>=0){ orders[idx].status='done'; orders[idx].doneAt=new Date().toISOString(); }
     }
     savePendingOrders(orders);
@@ -4361,15 +4403,16 @@ async function processOrderDone(o){
   }
 }
 
-function cancelOrder(orderNo){
-  document.getElementById('confirmMessage').textContent = `Futa ORDER #${orderNo}? MB na slot zilizohifadhiwa zitarudishwa kwenye laini.`;
+function cancelOrder(id){
+  document.getElementById('confirmMessage').textContent = `Futa order hii? MB na slot zilizohifadhiwa zitarudishwa kwenye laini.`;
   document.getElementById('confirmBtn').onclick = async ()=>{
     await refreshOrdersFromFirestore();
+    await refreshInventoryFromFirestore();
     const orders = getPendingOrders();
-    const o = orders.find(x=>x.orderNo===orderNo);
+    const o = orders.find(x=>x.id===id);
     if(!o){
       closeModal('modalConfirm');
-      showToast(`⚠️ ORDER #${orderNo} haipo tena`,'warning');
+      showToast(`⚠️ Order haipo tena`,'warning');
       renderOrdersPage();
       return;
     }
@@ -4377,10 +4420,10 @@ function cancelOrder(orderNo){
       reverseFifoSell(o.lineId, o.type, o.mb, o.usedBandos);
       decrementLineSlot(o.lineId, o.type);
     }
-    const updated = orders.filter(x=>x.orderNo!==orderNo);
+    const updated = orders.filter(x=>x.id!==id);
     savePendingOrders(updated);
     closeModal('modalConfirm');
-    showToast(`ORDER #${orderNo} imefutwa — MB/slot vimerudishwa`,'success');
+    showToast(`ORDER #${o.orderNo} imefutwa — MB/slot vimerudishwa`,'success');
     renderOrdersPage();
     renderPendingOrdersBadge();
     renderAll();
@@ -4445,11 +4488,17 @@ function openManualOrder(){
 let _orderCounter = 0; // itasasishwa kutoka Firestore baada ya initFirebase
 let _pendingOrder = null;
 
-function nextOrderNo(){
-  _orderCounter++;
-  _cache.orderCounter = _orderCounter;
-  saveMeta();
-  return String(_orderCounter).padStart(3,'0');
+// Soma namba mpya ya order MOJA KWA MOJA kutoka Firestore (si kumbukumbu ya kifaa)
+// ili kupunguza mgongano wa namba kati ya vifaa tofauti. Uthibitisho wa kweli wa
+// order moja moja unatokana na .id ya kipekee (uid()), si namba hii ya kuonyesha tu.
+async function getNextOrderNoFresh(){
+  const meta    = await loadDocFromFirestore('meta', {});
+  const current = (meta && meta.orderCounter) ? meta.orderCounter : 0;
+  const next    = current + 1;
+  _cache.orderCounter = next;
+  _orderCounter = next;
+  await saveDocToFirestore('meta', { lastDate: _cache.lastDate, orderCounter: next, assistantPhone: _cache.assistantPhone });
+  return String(next).padStart(3,'0');
 }
 
 function openOrderModal(lineId, type, mb){
@@ -4457,13 +4506,13 @@ function openOrderModal(lineId, type, mb){
   if(!line) return;
   const mbLabel   = fmtMB(mb);
   const typeLabel = type==='week'?'WIKI':'MWEZI';
-  const orderNo   = nextOrderNo();
-  // Hesabu gharama ya kweli (FIFO)
+  // orderNo na id vitapangwa wakati wa "Hifadhi Order" — si sasa — ili kuepuka
+  // namba kurukwa endapo dirisha hili litafungwa bila kuhifadhi
   const fifo = computeFifoCost(lineId, type, mb);
   const cost = fifo ? fifo.totalCost : 0;
   // Bei ya default kutoka pricing table
   const defaultPrice = calcPriceForMB(type, mb) || 0;
-  _pendingOrder = { lineId, type, mb, mbLabel, orderNo, line, cost };
+  _pendingOrder = { lineId, type, mb, mbLabel, orderNo:null, id:null, line, cost };
   // Info juu
   const infoEl = document.getElementById('orderLineInfo');
   if(infoEl) infoEl.innerHTML = `
@@ -4479,8 +4528,6 @@ function openOrderModal(lineId, type, mb){
   const costEl = document.getElementById('orderCostPreview');
   if(costEl)  costEl.value  = fifo ? fmt(cost) : '—';
   document.getElementById('orderBuyerPhone').value = '';
-  const smsToggle = document.getElementById('orderSmsToggle');
-  if(smsToggle) smsToggle.checked = true;
   updateOrderPreview();
   openModal('modalOrder');
   setTimeout(()=>document.getElementById('orderBuyerPhone').focus(), 200);
@@ -4488,7 +4535,8 @@ function openOrderModal(lineId, type, mb){
 
 function updateOrderPreview(){
   if(!_pendingOrder) return;
-  const {line, mbLabel, orderNo} = _pendingOrder;
+  const {line, mbLabel} = _pendingOrder;
+  const orderNo   = _pendingOrder.orderNo || '(itapangwa)';
   const typeLabel = _pendingOrder.type==='week'?'WIKI':'MWEZI';
   const phone = document.getElementById('orderBuyerPhone')?.value.trim() || '—';
   const msg = `🔔 ORDER #${orderNo}\n━━━━━━━━━━━━\n📦 MB: ${_pendingOrder.mb} (${typeLabel})\n📱 Laini: ${line.simNo||'SIM1'} - ${line.device||'—'}\n👤 Namba: ${phone}\n━━━━━━━━━━━━\nReply: DONE#${orderNo}`;
@@ -4552,7 +4600,10 @@ async function confirmOrder(){
   if(!phone) return showToast('Ingiza namba ya mteja kwanza','error');
   if(!sellingPrice) return showToast('Ingiza bei ya kuuzia','error');
 
-  const {lineId, type, mb, orderNo, line, mbLabel} = _pendingOrder;
+  const {lineId, type, mb, line, mbLabel} = _pendingOrder;
+
+  // Soma upya laini/mabando/slots kutoka Firestore — data ya hivi karibuni kabisa
+  await refreshInventoryFromFirestore();
 
   // Angalia tena kabla ya kuhifadhi — MB na slot bado zipo?
   const slots = getLineSlots(lineId);
@@ -4562,16 +4613,21 @@ async function confirmOrder(){
   const fifoResult = computeFifoCost(lineId, type, mb);
   if(!fifoResult) return showToast('❌ MB haitoshi tena kwa laini hii — chagua laini nyingine','error');
 
+  // Panga namba na kitambulisho cha kipekee cha order SASA (baada ya kuhakikisha kila kitu kinafaa)
+  const orderNo = await getNextOrderNoFresh();
+  const orderId = uid();
+  _pendingOrder.orderNo = orderNo;
+  _pendingOrder.id      = orderId;
+
   // HIFADHI (RESERVE) — punguza MB na ongeza slot MARA MOJA
   const applied = applyFifoSell(lineId, type, mb);
   updateLineSlots(lineId, type);
 
-  updateOrderPreview();
+  updateOrderPreview(); // sasa ina orderNo halisi
 
   const orders = getPendingOrders();
-  const sendSmsToCustomer = document.getElementById('orderSmsToggle')?.checked !== false;
   orders.push({
-    orderNo, lineId, type, mb, mbLabel,
+    id: orderId, orderNo, lineId, type, mb, mbLabel,
     buyerPhone: phone,
     sellingPrice,
     cost: applied.totalCost,
@@ -4579,7 +4635,7 @@ async function confirmOrder(){
     lineName: line.name,
     lineDevice: line.device,
     lineSimNo: line.simNo,
-    sendSmsToCustomer,
+    sendSmsToCustomer: true, // default — badilisha kwenye Orders page kabla ya Done
     status: 'pending',
     createdAt: new Date().toISOString()
   });
