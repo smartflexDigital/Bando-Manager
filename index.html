@@ -270,6 +270,18 @@ canvas{display:block;width:100%!important}
         </div>
       </div>
 
+      <!-- JUMLA YA MB/GB ZILIZOPO — LAINI ZOTE (inaonekana hata bila PIN, si taarifa ya faida) -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--card-r);padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem">
+        <div>
+          <div style="font-size:.78rem;color:var(--text2);text-transform:uppercase;letter-spacing:.03em;font-weight:600;margin-bottom:.2rem">📶 MB/GB Zilizopo — Laini Zote</div>
+          <div style="font-size:1.5rem;font-weight:800;color:var(--accent)" id="statTotalMbAvailable">0 MB</div>
+        </div>
+        <div style="display:flex;gap:1.25rem;font-size:.82rem;color:var(--text2);flex-wrap:wrap">
+          <div>Wiki: <span style="font-weight:700;color:var(--text)" id="statTotalMbWeekAvail">0 MB</span></div>
+          <div>Mwezi: <span style="font-weight:700;color:var(--text)" id="statTotalMbMonthAvail">0 MB</span></div>
+        </div>
+      </div>
+
       <!-- LOCKED OVERLAY -->
       <div id="dashLocked" style="display:block">
         <!-- MB WARNING — inaonekana hata bila PIN -->
@@ -2567,6 +2579,14 @@ function renderDashboard(){
   const fullLines=lines.filter(l=>{const sl=getLineSlots(l.id);return sl.weekUsed>=MAX_WEEK&&sl.monthUsed>=MAX_MONTH});
   const totalMbWeek=lines.reduce((s,l)=>s+(l.mbWeek||0),0);
   const totalMbMonth=lines.reduce((s,l)=>s+(l.mbMonth||0),0);
+  // Jumla ya MB/GB zilizopo (bado hazijauzwa) kwenye laini zote — taarifa ya
+  // hisa (stock), si faida, hivyo inaonekana hata kama PIN ya faida haijafunguliwa
+  const totalMbAvailEl      = document.getElementById('statTotalMbAvailable');
+  const totalMbWeekAvailEl  = document.getElementById('statTotalMbWeekAvail');
+  const totalMbMonthAvailEl = document.getElementById('statTotalMbMonthAvail');
+  if(totalMbAvailEl)      totalMbAvailEl.textContent      = fmtMB(totalMbWeek+totalMbMonth);
+  if(totalMbWeekAvailEl)  totalMbWeekAvailEl.textContent  = fmtMB(totalMbWeek);
+  if(totalMbMonthAvailEl) totalMbMonthAvailEl.textContent = fmtMB(totalMbMonth);
   const H='••••';
   document.getElementById('statTotalBalance').textContent=fmt(totalBal);
   document.getElementById('statTodaySales').textContent=fmt(totalRev);
