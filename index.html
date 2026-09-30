@@ -4185,14 +4185,27 @@ function savePendingOrders(orders){
   saveDocToFirestore('orders', orders);
 }
 
+let _showFullOrderHistory = false;
+function toggleOrderHistoryView(){
+  _showFullOrderHistory = !_showFullOrderHistory;
+  renderOrdersPage();
+}
+
 function renderOrdersPage(){
   const orders  = getPendingOrders();
   const pending = orders.filter(o=>o.status==='pending');
-  const done    = orders.filter(o=>o.status==='done').slice(-10).reverse();
+  const today   = todayStr();
+  // Orders zote zilizokamilika LEO, zikipangwa kwa tarakimu kuanzia #001
+  const doneToday = orders
+    .filter(o=>o.status==='done' && (o.doneAt||o.createdAt||'').slice(0,10)===today)
+    .sort((a,b)=> (parseInt(a.orderNo,10)||0) - (parseInt(b.orderNo,10)||0));
+  const done = _showFullOrderHistory
+    ? doneToday                          // historia kamili — kuanzia #001
+    : doneToday.slice(-10).reverse();    // za hivi karibuni pekee (chaguo-msingi)
   const el      = document.getElementById('ordersList');
   if(!el) return;
 
-  if(!pending.length && !done.length){
+  if(!pending.length && !doneToday.length){
     el.innerHTML=`<div class="empty-state">Hakuna orders kwa sasa — tuma order kwanza kupitia "Pata Laini"</div>`;
     return;
   }
@@ -4234,9 +4247,12 @@ Reply: DONE#${o.orderNo}</div>
       </div>`).join('');
   }
 
-  // Done orders (historia)
-  if(done.length){
-    html += `<div class="section-title" style="margin-top:1.5rem;margin-bottom:.75rem">✅ Zilizokamilika (Hivi Karibuni)</div>`;
+  // Done orders (historia ya leo)
+  if(doneToday.length){
+    html += `<div class="section-title" style="margin-top:1.5rem;margin-bottom:.75rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <span>✅ Zilizokamilika Leo (${doneToday.length})</span>
+      ${doneToday.length>10 ? `<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:.35rem .6rem" onclick="toggleOrderHistoryView()">${_showFullOrderHistory?'🔼 Onyesha za Hivi Karibuni':'📜 Ona Zote Kuanzia #001'}</button>` : ''}
+    </div>`;
     html += done.map(o=>`
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:.5rem;opacity:.7">
         <div style="display:flex;justify-content:space-between;align-items:center">
@@ -4422,8 +4438,9 @@ function cancelOrder(id){
     }
     const updated = orders.filter(x=>x.id!==id);
     savePendingOrders(updated);
+    await rollBackOrderNoAfterCancel(); // rudisha hesabu ya order nyuma kwa 1
     closeModal('modalConfirm');
-    showToast(`ORDER #${o.orderNo} imefutwa — MB/slot vimerudishwa`,'success');
+    showToast(`ORDER #${o.orderNo} imefutwa — MB/slot na hesabu ya order vimerudishwa`,'success');
     renderOrdersPage();
     renderPendingOrdersBadge();
     renderAll();
@@ -4499,6 +4516,27 @@ async function getNextOrderNoFresh(){
   _orderCounter = next;
   await saveDocToFirestore('meta', { lastDate: _cache.lastDate, orderCounter: next, assistantPhone: _cache.assistantPhone });
   return String(next).padStart(3,'0');
+}
+
+// Order yoyote ikifutwa, hesabu ya order inarudi nyuma kwa 1 — bila kujali
+// order iliyofutwa ilikuwa ipi kati ya zote (hata kama si ya mwisho kutolewa).
+// Mfano: zipo #001..#004, ukifuta #003, hesabu inarudi kwenye 3, hivyo order
+// ijayo itakuwa #004 tena (hata kama tayari kuna #004 nyingine iliyopo —
+// namba ya mwisho itaonekana mara mbili, jambo linalokubalika kwa mtumiaji
+// kwa sababu kila order bado ina utambulisho wake wa kipekee wa ndani (.id)
+// unaotumika kwa Done/Confirm, si namba hii ya kuonyesha tu).
+async function rollBackOrderNoAfterCancel(){
+  try{
+    const meta = await loadDocFromFirestore('meta', {});
+    const current = (meta && meta.orderCounter) ? meta.orderCounter : 0;
+    const back = Math.max(0, current - 1);
+    _cache.orderCounter = back;
+    _orderCounter = back;
+    await saveDocToFirestore('meta', { lastDate: _cache.lastDate, orderCounter: back, assistantPhone: _cache.assistantPhone });
+  }catch(e){
+    // best-effort — kama imeshindikana, hesabu inabaki kama ilivyo (si hitilafu kubwa)
+    console.warn('rollBackOrderNoAfterCancel failed', e);
+  }
 }
 
 function openOrderModal(lineId, type, mb){
